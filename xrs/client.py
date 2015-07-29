@@ -8,8 +8,8 @@ from threading import Thread
 from multiprocessing.connection import Client
 import os
 import argparse
-home_path = os.environ['HOME']
-logfile = home_path+'/sdx-ryu/xrs/client.log'
+
+logfile = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'client.log'))
 
 '''Write output to stdout'''
 def _write(stdout,data):
