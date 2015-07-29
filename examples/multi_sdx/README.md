@@ -11,7 +11,7 @@ $ sudo ./sdx_mininext_gadget.py
 Start __Ryu__ - The Controller  
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx --asdx-controller 1
+$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx --asdx-controller 1 --ofp-tcp-listen-port 7733
 ```
 
 Start the __Route Server__  
@@ -31,7 +31,7 @@ $ exabgp ~/supercharged_sdx/examples/multi_sdx/controller-1/sdx_config/bgp.conf 
 Start __Ryu__ - The Controller
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx --asdx-controller 2
+$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx --asdx-controller 2 --ofp-tcp-listen-port 5533 --wsapi-port 8090
 ```
 
 Start the __Route Server__
@@ -50,7 +50,7 @@ $ exabgp ~/supercharged_sdx/examples/multi_sdx/controller-2/sdx_config/bgp.conf 
 After using it, make sure to __remove__ old RIBs  
 
 ```bash
-$ sudo rm ~/sdx-ryu/xrs/ribs/172.0.0.* 
+$ sudo rm ~/sdx-ryu/xrs/ribs/* 
 ```
     
 ## Test the "multi_sdx" Example
