@@ -7,6 +7,8 @@ import json
 import sqlite3
 from rib import rib
 
+LOG = False
+
 class peer():
     
     def __init__(self, asn, ports, peers_in, peers_out):
@@ -57,6 +59,17 @@ class peer():
                 origin = attribute['origin'] if 'origin' in attribute else ''
                             
                 temp_as_path = attribute['as-path'] if 'as-path' in attribute else ''
+                
+                if ('as-set' in attribute):
+                    for temp_as in attribute['as-set']:
+                        if (temp_as not in temp_as_path):
+                            temp_as_path.append(temp_as)
+
+                if LOG:
+                    print "AS PATH: " + str(attribute['as-path'] if 'as-path' in attribute else "empty")
+                    print "AS SET: " + str(attribute['as-set'] if 'as-set' in attribute else "empty")
+                    print "COMBINATION: " + str(temp_as_path)
+
                 as_path = ' '.join(map(str,temp_as_path)).replace('[','').replace(']','').replace(',','')
                             
                 med = attribute['med'] if 'med' in attribute else ''

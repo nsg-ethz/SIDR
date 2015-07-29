@@ -26,7 +26,7 @@ class arp_proxy():
         
         try:
             self.raw_socket = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(ETH_TYPE_ARP))
-            self.raw_socket.bind(('exabgp-eth0', 0))
+            self.raw_socket.bind((self.xrs.interface, 0))
             self.raw_socket.settimeout(1.0)
         except socket.error as msg:
             print 'Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
@@ -54,7 +54,8 @@ class arp_proxy():
                     # check if the arp request stems from one of the participants
                     if eth_frame["src_mac"] in self.xrs.portmac_2_participant:
                         # then craft reply using VNH to VMAC mapping
-                        print "Crafting REPLY for received Request"
+                        if LOG:
+                            print "Crafting REPLY for received Request"
                         vmac_addr = vmac(arp_packet["dst_ip"], self.xrs.portmac_2_participant[eth_frame["src_mac"]], self.xrs)
 
                         # only send arp request if a vmac exists
@@ -68,7 +69,7 @@ class arp_proxy():
                             self.raw_socket.send(''.join(eth_packet))
                             
             except socket.timeout:
-                if LOG:
+                if False:
                     print 'Socket Timeout Occured'
 
     def stop(self):

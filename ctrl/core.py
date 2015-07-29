@@ -20,7 +20,6 @@ class SDX():
         self.participants = {}
         self.dst_participant_2_policies = defaultdict(list)
         
-        # put it in external config file
         self.rs_outport = 5
         self.superset_id_size = 6
         self.max_superset_size = 30
@@ -41,29 +40,53 @@ def parse_config(base_path, config_file, policy_file):
     # loading policies
     policies = json.load(open(policy_file, 'r'))
     
-    # create XRS object
+    # create SDX object
     sdx = SDX()
 
-    for participant_name in config:        
-        participant = config[participant_name]
+    if ("Route Server" in config):
+        if ("Outport" in config["Route Server"]):
+            sdx.rs_outport = config["Route Server"]["Outport"]
+        if ("IP" in config["Route Server"]):
+            sdx.rs_ip = config["Route Server"]["IP"]
+
+    if ("VMAC Computation" in config):
+        if ("Superset ID Size" in config["VMAC Computation"]):
+            sdx.superset_id_size = config["VMAC Computation"]["Superset ID Size"]
+        if ("Max Superset Size" in config["VMAC Computation"]):
+            sdx.max_superset_size = config["VMAC Computation"]["Max Superset Size"]
+        if ("Best Path Size" in config["VMAC Computation"]):
+            sdx.best_path_size = config["VMAC Computation"]["Best Path Size"]
+        if ("VMAC Size" in config["VMAC Computation"]):
+            sdx.VMAC_size = config["VMAC Computation"]["VMAC Size"]
+
+    if ("VNHs" in config):
+        sdx.VNHs = IPNetwork(config["VNHs"])
+
+    if ("REST API URL" in config):
+        if ("Short" in config["REST API URL"]):
+            sdx.rest_api_url = config["REST API URL"]["Short"]
+
+    if ("Participants" in config):
+        for participant_name in config["Participants"]:        
+            participant = config["Participants"][participant_name]
         
-        file_path = os.path.join(base_path, "participant_policies", policies[participant_name])
-        participant_policies = validate_policies(json.load(open(file_path, 'r')))
+            file_path = os.path.join(base_path, "participant_policies", policies[participant_name])
+            participant_policies = validate_policies(json.load(open(file_path, 'r')))
         
-        if ("outbound" in participant_policies):
-            for policy in participant_policies["outbound"]:
+            if ("outbound" in participant_policies):
+                for policy in participant_policies["outbound"]:
+                
+                    policy["in_port"] = int(participant_name)
+                    if ("fwd" in policy["action"]):
+                        sdx.dst_participant_2_policies[policy["action"]["fwd"]].append(policy)
             
-                policy["in_port"] = int(participant_name)
-                if ("fwd" in policy["action"]):
-                    sdx.dst_participant_2_policies[policy["action"]["fwd"]].append(policy)
-            
-        # adding ports and mappings
-        ports = [{"ID": participant["Ports"][i]['Id'],
-                  "MAC": participant["Ports"][i]['MAC'],
-                  "IP": participant["Ports"][i]['IP']} 
-                  for i in range(0, len(participant["Ports"]))]
+            # adding ports and mappings
+            ports = [{"ID": participant["Ports"][i]['Id'],
+                      "MAC": participant["Ports"][i]['MAC'],
+                      "IP": participant["Ports"][i]['IP']} 
+                      for i in range(0, len(participant["Ports"]))]
                       
-        sdx.participants[int(participant_name)] = {"policies": participant_policies, "ports": ports}
+            sdx.participants[int(participant_name)] = {"policies": participant_policies, "ports": ports}
 
     return sdx
     

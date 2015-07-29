@@ -12,7 +12,8 @@ class rib():
         
         with lock():
             # Create a database in RAM
-            self.db = sqlite3.connect('/home/mininet/asdx/xrs/ribs/'+ip+'.db',check_same_thread=False)
+            base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"ribs"))
+            self.db = sqlite3.connect(base_path+'/'+ip+'.db',check_same_thread=False)
             self.db.row_factory = sqlite3.Row
             self.name = name
         

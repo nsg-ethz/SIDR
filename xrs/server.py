@@ -9,8 +9,8 @@ from multiprocessing.connection import Listener
 ''' bgp server '''
 class server():
     
-    def __init__(self):
-        self.listener = Listener(('localhost', 6000), authkey='xrs')
+    def __init__(self, port):
+        self.listener = Listener(('localhost', port), authkey='xrs')
         
         self.sender_queue = Queue()
         self.receiver_queue = Queue()
@@ -46,7 +46,7 @@ def _receiver(conn,queue):
 ''' main '''	
 if __name__ == '__main__':
     while True:
-        server = server()
+        server = server(port)
     
         while True:
             try:

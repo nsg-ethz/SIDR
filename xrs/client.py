@@ -7,8 +7,9 @@ import sys
 from threading import Thread
 from multiprocessing.connection import Client
 import os
+import argparse
 home_path = os.environ['HOME']
-logfile = '/home/mininet/asdx/xrs/client.log'
+logfile = home_path+'/sdx-ryu/xrs/client.log'
 
 '''Write output to stdout'''
 def _write(stdout,data):
@@ -60,11 +61,19 @@ def _receiver(conn,stdout,log):
 
 ''' main '''	
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, help="port to connect to route server")
+    parser.add_argument("--key", help="authentication key to connect to route server")
+    args = parser.parse_args()
+
+    port = args.port if args.port else 6000
+    key = args.key if args.key else 'xrs'
 	
     log = open(logfile, "w")
     log.write('Open Connection \n')
     
-    conn = Client(('localhost', 6000), authkey='xrs')
+    conn = Client(('localhost', port), authkey=key)
     
     sender = Thread(target=_sender, args=(conn,sys.stdin,log))
     sender.start()

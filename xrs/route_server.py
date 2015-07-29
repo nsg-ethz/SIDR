@@ -29,7 +29,7 @@ class route_server():
         ## Parse Config
         self.xrs = parse_config(config_file)
         
-        self.xrs.server = Server()
+        self.xrs.server = Server(self.xrs.connection_port)
         self.run = True
         
         # Start arp proxy
@@ -37,7 +37,7 @@ class route_server():
         self.ap_thread = Thread(target=self.sdx_ap.start)
         self.ap_thread.daemon = True
         self.ap_thread.start()
-        
+       
     def start(self):
         print "Start Server"
         self.xrs.server.start()
@@ -46,6 +46,7 @@ class route_server():
             # get BGP messages from ExaBGP via stdin
             try:
                 route = self.xrs.server.receiver_queue.get(True, 1)
+                
                 route = json.loads(route)
 
                 # process route advertisements - add/remove routes to/from rib of respective participant (neighbor)
@@ -90,7 +91,7 @@ class route_server():
         
 def main(argv):
     # locate config file
-    base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"..","examples",args.dir,"controller","sdx_config"))
+    base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"..","examples",args.dir,"controller-"+args.controller,"sdx_config"))
     config_file = os.path.join(base_path, "sdx_global.cfg")
     
     # start route server    
@@ -109,9 +110,7 @@ def main(argv):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('dir', help='the directory of the example')
+    parser.add_argument('controller', help='the number of the SDX')
     args = parser.parse_args() 
     
     main(args)
-
-    
-    

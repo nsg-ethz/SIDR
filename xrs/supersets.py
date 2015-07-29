@@ -70,6 +70,10 @@ def update_supersets(updates, xrs):
 
         elif ('withdraw' in update):
             continue
+
+    # debug output
+    if LOG:
+        print "update_supersets(): " + str(xrs.supersets)
     
     # check which participants joined a new superset and communicate to the SDX controller
     return sdx_msgs
