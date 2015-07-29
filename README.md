@@ -19,14 +19,14 @@ To get started install these softwares on your ```host``` machine:
 
 ####Basics
 
-* Clone the ```sdx-ryu``` repository from Github:
+* Clone the ```supercharged_sdx``` repository from Github:
 ```bash 
-$ git clone https://github.com/sdn-ixp/sdx-ryu.git
+$ git clone https://github.com/sdn-ixp/supercharged_sdx.git
 ```
 
-* Change the directory to ```sdx-ryu```:
+* Change the directory to ```supercharged_sdx```:
 ```bash
-$ cd sdx-ryu
+$ cd supercharged_sdx
 ```
 
 * Now run the vagrant up command. This will read the Vagrantfile from the current directory and provision the VM accordingly:
@@ -36,9 +36,9 @@ $ vagrant up
 
 * Access the VM through ssh - user: vagrant, password: vagrant
 
-* Clone the ```sdx-ryu``` repository from Github into the VM:
+* Clone the ```supercharged_sdx``` repository from Github into the VM:
 ```bash
-$ git clone https://github.com/sdn-ixp/sdx-ryu.git
+$ git clone https://github.com/sdn-ixp/supercharged_sdx.git
 $ chmod 755 ~/supercharged_sdx/xrs/client.py ~/supercharged_sdx/xrs/route_server.py ~/supercharged_sdx/examples/simple/mininet/sdx_mininext.py
 $ mkdir ~/supercharged_sdx/xrs/ribs
 ```
@@ -85,15 +85,15 @@ __aSDX__
 Clone aSDX.  
 
     $ cd ~  
-    $ git clone https://github.com/nsg-ethz/supercharged_sdx.git asdx/ 
+    $ git clone https://github.com/nsg-ethz/supercharged_sdx.git
     
 Set file permissions
     
-    $ chmod 755 ~/asdx/xrs/client.py ~/asdx/xrs/route_server.py ~/asdx/examples/simple/mininet/sdx_mininext.py
+    $ chmod 755 ~/supercharged_sdx/xrs/client.py ~/supercharged_sdx/xrs/route_server.py ~/supercharged_sdx/examples/simple/mininet/sdx_mininext.py
 
 Create directory for RIBs
 
-    $ mkdir ~/asdx/xrs/ribs
+    $ mkdir ~/supercharged_sdx/xrs/ribs
 
 __ExaBGP__ (tested with version 3.4.10)  
 
@@ -108,7 +108,7 @@ Clone Ryu
 
 Before installing it, replace flags.py with the provided file
 
-    $ cp ~/asdx/ryu/flags.py ~/ryu/ryu/flags.py
+    $ cp ~/supercharged_sdx/ryu/flags.py ~/ryu/ryu/flags.py
     $ cd ryu
     $ sudo python ./setup.py install
 
@@ -122,7 +122,7 @@ Dependencies
 ## Usage
 __Mininet__ 
 
-    $ cd ~/sdx-ryu/examples/simple/mininet  
+    $ cd ~/supercharged_sdx/examples/simple/mininet  
     $ sudo ./sdx_mininext.py  
 
 Make OVS use OpenFlow 1.3  
@@ -131,20 +131,20 @@ Make OVS use OpenFlow 1.3
 
 Start __Ryu__ - The Controller  
 
-    $ ryu-manager ~/sdx-ryu/ctrl/asdx.py --asdx-dir simple --asdx-controller 1
+    $ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir simple --asdx-controller 1
 
 Start the __Route Server__  
 
-    $ cd ~/sdx-ryu/xrs
+    $ cd ~/supercharged_sdx/xrs
     $ sudo ./route_server.py simple 1
 
 Start __ExaBGP__  
 
-    $ exabgp ~/sdx-ryu/examples/simple/controller-1/sdx_config/bgp.conf
+    $ exabgp ~/supercharged_sdx/examples/simple/controller-1/sdx_config/bgp.conf
 
 After using it, make sure to __remove__ old RIBs  
 
-    $ sudo rm ~/sdx-ryu/xrs/ribs/172.0.0.* 
+    $ sudo rm ~/supercharged_sdx/xrs/ribs/172.0.0.* 
     
 ## Run the "simple" Example
 Check if the route server has correctly advertised the routes  
