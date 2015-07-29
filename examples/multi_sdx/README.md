@@ -4,7 +4,7 @@
 __Mininet__ 
 ```bash
 $ cd ~/supercharged_sdx/examples/multi_sdx/mininet  
-$ sudo ./sdx_mininext.py  
+$ sudo ./sdx_mininext_gadget.py  
 ```
 
 ### SDX 1
