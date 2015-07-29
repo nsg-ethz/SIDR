@@ -72,12 +72,12 @@ _Participant F - outbound:_
 #### 1  
 
     mininext> x1 iperf -s -B 10.0.0.1 -p 80 &  
-    mininext> a1 iperf -c 30.0.0.1 -B 20.0.0.1 -p 80 -t 2    
+    mininext> a1 iperf -c 10.0.0.1 -B 20.0.0.1 -p 80 -t 2    
 
 #### 2  
 
     mininext> x1 iperf -s -B 10.0.0.1 -p 4321 &  
-    mininext> a1 iperf -c 30.0.0.1 -B 20.0.0.1 -p 4321 -t 2    
+    mininext> a1 iperf -c 10.0.0.1 -B 20.0.0.1 -p 4321 -t 2    
 
 #### 3
 
