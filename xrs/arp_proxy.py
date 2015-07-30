@@ -69,7 +69,7 @@ class arp_proxy():
                             self.raw_socket.send(''.join(eth_packet))
                             
             except socket.timeout:
-                if False:
+                if LOG:
                     print 'Socket Timeout Occured'
 
     def stop(self):
