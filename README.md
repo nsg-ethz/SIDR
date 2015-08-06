@@ -91,6 +91,10 @@ Set file permissions
     
     $ chmod 755 ~/supercharged_sdx/xrs/client.py ~/supercharged_sdx/xrs/route_server.py ~/supercharged_sdx/examples/simple/mininet/sdx_mininext.py
 
+Add correct path in config of ExaBGP (line 3)
+
+    $ nano ~/supercharged_sdx/examples/simple/controller-1/sdx_config/bgp.conf
+
 Create directory for RIBs
 
     $ mkdir ~/supercharged_sdx/xrs/ribs
