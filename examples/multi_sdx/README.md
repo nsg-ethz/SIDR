@@ -1,5 +1,16 @@
 # Multi-SDX Deployment
 
+## Config
+Select appropriate bgp advertisement method by specifying it in the config under "BGP Advertisements" (controller-X/sdx_config/sdx_global.cfg):
+
+* Best Path - Only use the AS Path of the best path
+
+* AS Set - Combine all AS Paths of possible routes into an AS Set
+
+* Policy Based AS Path - Combine all AS Paths of the routes that might be taken based on the policies into an AS Set
+
+* Blocking Policy Based AS Path - Same as "Policy Based AS Path", but if a policy and route lead to a loop, that route is discarded and the policy is blocked
+
 ## Usage
 __Mininet__ 
 ```bash
