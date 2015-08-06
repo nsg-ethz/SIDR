@@ -54,7 +54,21 @@ def vmac(vnh, participant, xrs):
         set_bitstring = ""
         for temp_participant in xrs.supersets[superset_identifier]:
             if (temp_participant in basic_set and temp_participant in xrs.participants[participant].peers_out):
-                set_bitstring += "1"
+                if (xrs.bgp_advertisements == "Policy Based AS Path"):
+                    if (temp_participant in xrs.participants[participant].fwd_peers):
+                        set_bitstring += "1"
+                    else: 
+                        set_bitstring += "0"
+                if (xrs.bgp_advertisements == "Blocking Policy Based AS Path"):
+                    if (prefix in xrs.participants[participant].no_fwd_peers):
+                        if (temp_participant in xrs.participants[participant].fwd_peers and temp_participant not in xrs.participants[participant].no_fwd_peers[prefix]):
+                            set_bitstring += "1"
+                        else: 
+                            set_bitstring += "0"
+                    else:
+                        set_bitstring += "0"
+                else:
+                    set_bitstring += "1"
             else:
                 set_bitstring += "0"
         if (len(set_bitstring) < xrs.max_superset_size):

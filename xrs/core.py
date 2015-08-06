@@ -2,6 +2,7 @@
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
 ## RouteServer-specific imports
+import os
 import json
 from netaddr import *
 from peer import peer as Peer
@@ -31,11 +32,14 @@ class XRS():
         
         # put it in external config file
         self.connection_port = 6000
+        self.connection_key = 'xrs'
 
         self.superset_threshold = 10
         
         self.max_superset_size = 30
         self.best_path_size = 12
+
+        self.bgp_advertisements = "Best Path"
         
         self.VMAC_size = 48
         
@@ -44,12 +48,14 @@ class XRS():
         self.VNHs = IPNetwork('172.0.1.1/24')
 
 	self.interface = "exabgp-eth0"
+
+        self.policy_file = "sdx_policies.cfg"
         
 ###
 ### Extended Route Server primary functions
 ###
 
-def parse_config(config_file):
+def parse_config(base_path, config_file):
     
     # loading config file
     config = json.load(open(config_file, 'r'))
@@ -64,9 +70,16 @@ def parse_config(config_file):
     if ("Route Server" in config):
         if ("Connection Port" in config["Route Server"]):
             xrs.connection_port = config["Route Server"]["Connection Port"]
+        if ("Connection Key" in config["Route Server"]):
+            xrs.connection_key = config["Route Server"]["Connection Key"]
         if ("Interface" in config["Route Server"]):
             xrs.interface = config["Route Server"]["Interface"]
-
+        if ("BGP Advertisements" in config["Route Server"]):
+            xrs.bgp_advertisements = config["Route Server"]["BGP Advertisements"]
+            if (xrs.bgp_advertisements == "Policy Based AS Path" or xrs.bgp_advertisements == "Blocking Policy Based AS Path"):
+                if ("Policy File" in config):
+                    xrs.policy_file = config["Policy File"]
+                policies = json.load(open(os.path.join(base_path, "sdx_config", xrs.policy_file), 'r'))
     if ("VMAC Computation" in config):
         if ("Superset ID Size" in config["VMAC Computation"]):
             xrs.superset_id_size = config["VMAC Computation"]["Superset ID Size"]
@@ -123,8 +136,19 @@ def parse_config(config_file):
                 xrs.participant_2_portmac[int(participant_name)].append(participant["Ports"][i]['MAC'])
         
             peers_in = participant["Peers"]
+            
+            fwd_peers = []
+            if xrs.bgp_advertisements == "Policy Based AS Path" or xrs.bgp_advertisements == "Blocking Policy Based AS Path":
+                file_path = os.path.join(base_path, "participant_policies", policies[participant_name])
+                participant_policies = json.load(open(file_path, 'r'))
         
+                if ("outbound" in participant_policies):
+                    for policy in participant_policies["outbound"]:
+                        if ("fwd" in policy["action"]):
+                            if (policy["action"]["fwd"] not in fwd_peers):
+                                fwd_peers.append(policy["action"]["fwd"])
+ 
             # create peer and add it to the route server environment
-            xrs.participants[int(participant_name)] = Peer(asn, ports, peers_in, peers_out[int(participant_name)])
-    
+            xrs.participants[int(participant_name)] = Peer(asn, ports, peers_in, peers_out[int(participant_name)], fwd_peers)
+
     return xrs

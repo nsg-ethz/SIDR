@@ -78,9 +78,8 @@ class aSDX(app_manager.RyuApp):
         controller = CONF['asdx']['controller']
         base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"..","examples",dir,"controller-"+controller))
         config_file = os.path.join(base_path, "sdx_config", "sdx_global.cfg")
-        policy_file = os.path.join(base_path, "sdx_config", "sdx_policies.cfg")
         
-        self.sdx = parse_config(base_path, config_file, policy_file)
+        self.sdx = parse_config(base_path, config_file)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):

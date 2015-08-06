@@ -7,11 +7,11 @@ import json
 import sqlite3
 from rib import rib
 
-LOG = False
+LOG = True
 
 class peer():
     
-    def __init__(self, asn, ports, peers_in, peers_out):
+    def __init__(self, asn, ports, peers_in, peers_out, fwd_peers):
         
         self.asn = asn
         self.ports = ports
@@ -28,6 +28,10 @@ class peer():
         self.peers_in = peers_in
         # peers that the participant can send its traffic to and gets advertisements from
         self.peers_out = peers_out
+        # peers that the participant is actually sending traffic to based on the policies
+        self.fwd_peers = fwd_peers
+        # peers that the participant is not allowed to send any traffic to to avoid loops
+        self.no_fwd_peers = {}
          
     def update(self,route):
         updates = []
@@ -58,20 +62,19 @@ class peer():
                             
                 origin = attribute['origin'] if 'origin' in attribute else ''
                             
-                temp_as_path = attribute['as-path'] if 'as-path' in attribute else ''
+                temp_as_path = attribute['as-path'] if 'as-path' in attribute else []
                 
-                if ('as-set' in attribute):
-                    for temp_as in attribute['as-set']:
-                        if (temp_as not in temp_as_path):
-                            temp_as_path.append(temp_as)
+                temp_as_set = attribute['as-set'] if 'as-set' in attribute else []
+
+                as_path = ' '.join(map(str,temp_as_path)).replace('[','').replace(']','').replace(',','')
+                if len(temp_as_set) > 0:
+                    as_path += ' ( '+' '.join(map(str,sorted(list(temp_as_set), key=int))).replace('[','').replace(']','').replace(',','')+' )'
 
                 if LOG:
                     print "AS PATH: " + str(attribute['as-path'] if 'as-path' in attribute else "empty")
                     print "AS SET: " + str(attribute['as-set'] if 'as-set' in attribute else "empty")
-                    print "COMBINATION: " + str(temp_as_path)
-
-                as_path = ' '.join(map(str,temp_as_path)).replace('[','').replace(']','').replace(',','')
-                            
+                    print "COMBINATION: " + str(as_path)
+                                            
                 med = attribute['med'] if 'med' in attribute else ''
                             
                 community = attribute['community'] if 'community' in attribute else ''

@@ -155,13 +155,20 @@ def best_path_selection(routes):
 
     
 ''' Helper functions '''
-def aspath_length(as_path):
-    ases = as_path.split()
-    return len(ases)
+def aspath_length(as_path_set):
+    temp = as_path_set.split('(')
+    as_path = temp[0].split()
+    as_set = temp[1].replace(')','').split() if len(temp) > 1 else []
 
-def get_advertised_as(as_path):
-    ases = as_path.split()
-    return ases[0]
+    length = len(as_path)+1 if len(as_set) > 0 else len(as_path)
+    return length
+
+def get_advertised_as(as_path_set):
+    temp = as_path_set.split('(')
+    as_path = temp[0].split()
+    as_set = temp[1].replace(')','').split() if len(temp) > 1 else []
+
+    return as_path[0]
 
 def ip_to_long(ip):
     return struct.unpack('!L', socket.inet_aton(ip))[0]

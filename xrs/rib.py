@@ -21,7 +21,7 @@ class rib():
             cursor = self.db.cursor()
             cursor.execute('''
                         create table if not exists '''+self.name+''' (prefix text, next_hop text,
-                               origin text, as_path text, communities text, med integer, atomic_aggregate boolean)
+                               origin text, as_path text, communities text, med integer, atomic_aggregate boolean, primary key (prefix))
             ''')
        
             self.db.commit()
@@ -45,11 +45,11 @@ class rib():
             cursor = self.db.cursor()
         
             if (isinstance(item,tuple) or isinstance(item,list)):
-                cursor.execute('''insert into ''' + self.name + ''' (prefix, next_hop, origin, as_path, communities, med,
+                cursor.execute('''insert or replace into ''' + self.name + ''' (prefix, next_hop, origin, as_path, communities, med,
                         atomic_aggregate) values(?,?,?,?,?,?,?)''', 
                         (key,item[0],item[1],item[2],item[3],item[4],item[5]))
             elif (isinstance(item,dict) or isinstance(item,sqlite3.Row)):
-                cursor.execute('''insert into ''' + self.name + ''' (prefix, next_hop, origin, as_path, communities, med,
+                cursor.execute('''insert or replace into ''' + self.name + ''' (prefix, next_hop, origin, as_path, communities, med,
                         atomic_aggregate) values(?,?,?,?,?,?,?)''', 
                         (key,item['next_hop'],item['origin'],item['as_path'],item['communities'],item['med'],item['atomic_aggregate']))
             
@@ -61,7 +61,7 @@ class rib():
             cursor = self.db.cursor()
         
             if (isinstance(items,list)):
-                cursor.execute('''insert into ''' + self.name + ''' (prefix, next_hop, origin, as_path, communities, med,
+                cursor.execute('''insert or replace into ''' + self.name + ''' (prefix, next_hop, origin, as_path, communities, med,
                         atomic_aggregate) values(?,?,?,?,?,?,?)''', items)
             
     def get(self,key): 

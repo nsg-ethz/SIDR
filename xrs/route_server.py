@@ -22,14 +22,14 @@ LOG = False
 
 class route_server():
     
-    def __init__(self, config_file):
+    def __init__(self, base_path, config_file):
         print "Initialize the Route Server"
     
         # Init the Route Server
         ## Parse Config
-        self.xrs = parse_config(config_file)
+        self.xrs = parse_config(base_path, config_file)
         
-        self.xrs.server = Server(self.xrs.connection_port)
+        self.xrs.server = Server(self.xrs.connection_port, self.xrs.connection_key)
         self.run = True
         
         # Start arp proxy
@@ -37,7 +37,7 @@ class route_server():
         self.ap_thread = Thread(target=self.sdx_ap.start)
         self.ap_thread.daemon = True
         self.ap_thread.start()
-       
+        
     def start(self):
         print "Start Server"
         self.xrs.server.start()
@@ -91,11 +91,11 @@ class route_server():
         
 def main(argv):
     # locate config file
-    base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"..","examples",args.dir,"controller-"+args.controller,"sdx_config"))
-    config_file = os.path.join(base_path, "sdx_global.cfg")
+    base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"..","examples",args.dir,"controller-"+args.controller))
+    config_file = os.path.join(base_path, "sdx_config", "sdx_global.cfg")
     
     # start route server    
-    sdx_rs = route_server(config_file)
+    sdx_rs = route_server(base_path, config_file)
     rs_thread = Thread(target=sdx_rs.start)
     rs_thread.daemon = True
     rs_thread.start()
