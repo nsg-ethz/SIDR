@@ -7,7 +7,7 @@ import json
 import sqlite3
 from rib import rib
 
-LOG = True
+LOG = False
 
 class peer():
     
@@ -46,29 +46,30 @@ class peer():
         
         route_list = []
    
-        if ('state' in route['neighbor'] and route['neighbor']['state']=='down'):
-            #TODO WHY NOT COMPLETELY DELETE LOCAL?
-            if LOG:
-                print "PEER DOWN - ASN "+str(self.asn)
+        if ('state' in route['neighbor']):
+            if (route['neighbor']['state']=='down'):
+                if LOG:
+                    print "PEER DOWN - ASN "+str(self.asn)
 
-            routes = self.rib['input'].get_all()
+                routes = self.rib['input'].get_all()
                         
-            for route_item in routes:
-                route_list.append({'withdraw': route_item})
+                for route_item in routes:
+                    route_list.append({'withdraw': route_item})
 
-            self.rib['local'].delete_all()
-            self.rib['local'].commit()
-                      
-            self.rib['output'].delete_all()
-            self.rib['output'].commit()
+                self.rib["output"].delete_all()
+                self.rib["output"].commit()
 
-            self.rib["input"].delete_all()
-            self.rib["input"].commit()
+                self.rib["input"].delete_all()
+                self.rib["input"].commit()
+
+            elif (route['neighbor']['state']=='up'):
+                # announce all existing prefixes from local rib
+                routes = self.rib['local'].get_all()
+
+                for route_item in routes:
+                    route_list.append({'re-announce': route_item})
 
         if ('message' in route['neighbor']):
-            if LOG: 
-                print "RECEIVED UPDATE - ASN "+str(self.asn)
-
             if ('update' in route['neighbor']['message']):
                 if ('attribute' in route['neighbor']['message']['update']):
                     attribute = route['neighbor']['message']['update']['attribute']
