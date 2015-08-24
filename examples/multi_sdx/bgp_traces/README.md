@@ -3,6 +3,10 @@
 Packet capture of the multi SDX setup with different BGP advertisement settings and different order of SDX start up.
 
 Use the filter "bgp && frame.cap_len > 85" when looking at the files with wireshark to only see the relevant BGP messages.
+## AS Set
+
+* ***asset1_sdx1.pcapng*** and ***asset1_sdx2.pcapng*** - packet capture of the route server at sdx1 and sdx2. sdx1 was started before sdx2.
+* ***asset2_sdx1.pcapng*** and ***asset2_sdx2.pcapng*** - packet capture of the route server at sdx1 and sdx2. sdx2 was started before sdx1.
 
 ## Policy Based Best Path
 
