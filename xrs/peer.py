@@ -64,6 +64,9 @@ class peer():
 
             elif (route['neighbor']['state']=='up'):
                 # announce all existing prefixes from local rib
+                if LOG: 
+                    print "PEER UP - ASN "+str(self.asn)
+
                 routes = self.rib['local'].get_all()
 
                 for route_item in routes:

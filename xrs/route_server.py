@@ -46,6 +46,9 @@ class route_server():
             # get BGP messages from ExaBGP via stdin
             try:
                 route = self.xrs.server.receiver_queue.get(True, 1)
+
+                if LOG:
+                    print str(route)
                 
                 route = json.loads(route)
 
