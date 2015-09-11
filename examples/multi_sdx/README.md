@@ -61,7 +61,7 @@ $ exabgp ~/supercharged_sdx/examples/multi_sdx/controller-2/sdx_config/bgp.conf 
 After using it, make sure to __remove__ old RIBs  
 
 ```bash
-$ sudo rm ~/sdx-ryu/xrs/ribs/* 
+$ sudo rm ~/supercharged_sdx/xrs/ribs/* 
 ```
     
 ## Test the "multi_sdx" Example

@@ -9,7 +9,7 @@ from multiprocessing.connection import Client
 import os
 import argparse
 home_path = os.environ['HOME']
-logfile = home_path+'/sdx-ryu/xrs/client.log'
+logfile = home_path+'/supercharged_sdx/xrs/client.log'
 
 '''Write output to stdout'''
 def _write(stdout,data):
