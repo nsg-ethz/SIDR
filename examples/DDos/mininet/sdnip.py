@@ -139,9 +139,10 @@ class BgpRouter(Router):
             if 'port' in neighbor:
                 writeLine(1, 'neighbor %s port %s' % (neighbor['address'], neighbor['port']))
             writeLine(1, '!')
-            
-        for route in self.routes:
-            writeLine(1, 'network %s' % route)
+        
+        if self.routes:
+            for route in self.routes:
+                writeLine(1, 'network %s' % route)
         
         configFile.close()
     
