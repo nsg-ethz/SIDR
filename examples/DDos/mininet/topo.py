@@ -5,7 +5,7 @@ from mininet.net import Mininet
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 from mininet.node import RemoteController, OVSSwitch, Node
-from sdnip import BgpRouter, SdnipHost
+from sdnip import BgpRouter, SdnipHost, SDXSwitch
 
 class SDNTopo( Topo ):
     #"TODO: Describe topology"
@@ -15,18 +15,24 @@ class SDNTopo( Topo ):
 
         self.routers = {}
 
+        # Add remote controller for sdx1
+        k1 = RemoteController('k1', ip='127.0.0.1', port=7733)
+
         # Add sdx1 fabric
         sdx1_fabric = {
             'name': 'SDX 1',
-            'switch': self.addSwitch( 's1' ),
+            'switch': self.addSwitch( 's1', controller=k1, cls=SDXSwitch ),
             'route_server': '172.0.255.254',
             'as': 65000
         }
 
+        # Add remote controller for sdx2
+        k2 = RemoteController('k2', ip='127.0.0.1', port=5533)
+
         # Add sdx1 fabric
         sdx2_fabric = {
             'name': 'SDX 2',
-            'switch': self.addSwitch( 's2' ),
+            'switch': self.addSwitch( 's2', controller=k2, cls=SDXSwitch ),
             'route_server': '172.255.255.254',
             'as': 65500 
         }        
@@ -184,11 +190,11 @@ class SDNTopo( Topo ):
            ]
         )
         # Add root node for route server of SDX 1 - exaBGP - and connect it to the fabric
-        sdx1_rs = self.addHost('exabgp', ip = '172.0.255.254/16', inNamespace = False)
+        sdx1_rs = self.addHost('rs1', ip = '172.0.255.254/16', inNamespace = False)
         self.addLink(sdx1_rs, sdx1_fabric['switch'])
 
         # Add root node for route server of SDX 2 - exaBGP - and connect it to the fabric
-        sdx2_rs = self.addHost('exabgp', ip = '172.0.255.254/16', inNamespace = False)
+        sdx2_rs = self.addHost('rs2', ip = '172.255.255.254/16', inNamespace = False)
         self.addLink(sdx2_rs, sdx2_fabric['switch'])
 
     def addAutonomousSystem(self,sdx_fabric,name,sdx_interface,other_interfaces,networks,AS,neighbors):
@@ -265,7 +271,7 @@ if __name__ == "__main__":
     setLogLevel('info')
     topo = SDNTopo()
 
-    net = Mininet(topo=topo, controller=RemoteController, switch=OVSSwitch)
+    net = Mininet(topo=topo, controller=RemoteController, switch=SDXSwitch)
 
     net.start()
 
