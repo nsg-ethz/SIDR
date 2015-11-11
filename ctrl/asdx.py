@@ -213,6 +213,10 @@ class aSDX(app_manager.RyuApp):
             self.add_flow(datapath, DEFAULT_INBOUND_COOKIE, INBOUND_TABLE, DEFAULT_PRIORITY, match, actions)
     
     def supersets_changed(self, update):
+        if not self.datapath:
+            self.logger.error("No switch connected - Superset Update cannot be handled")
+            return
+
         parser = self.datapath.ofproto_parser
     
         if (update["type"] == "new"):

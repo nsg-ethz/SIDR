@@ -2,12 +2,21 @@
 
 # Libraries for creating SDN-IP networks
 
-from mininet.node import Host
+from mininet.node import Host, OVSSwitch
 from mininet.net import Mininet
 from mininet.log import info, debug
 
 import imp, os, sys
 
+
+class SDXSwitch( OVSSwitch ):
+    "Custom Switch that connects to allows to connect to several Controllers"
+    def __init__(self, name, controller, **params):
+        OVSSwitch.__init__(self, name, failMode='standalone', **params)
+        self.controller = controller
+
+    def start( self, controllers ):
+        return OVSSwitch.start( self, [ self.controller ] )
 
 class SdnipHost(Host):
     def __init__(self, name, ips, gateway, *args, **kwargs):
