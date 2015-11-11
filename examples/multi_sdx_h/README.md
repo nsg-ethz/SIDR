@@ -14,48 +14,48 @@ Select appropriate bgp advertisement method by specifying it in the config under
 ## Usage
 __Mininet__ 
 ```bash
-$ cd ~/supercharged_sdx/examples/multi_sdx/mininet  
-$ sudo ./sdx_mininext_gadget.py  
+$ cd ~/supercharged_sdx/examples/multi_sdx_h/mininet  
+$ sudo ./topo.py  
 ```
 
 ### SDX 1
 Start __Ryu__ - The Controller  
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx --asdx-controller 1 --ofp-tcp-listen-port 7733
+$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx_h --asdx-controller 1 --ofp-tcp-listen-port 7733
 ```
 
 Start the __Route Server__  
 
 ```bash
 $ cd ~/supercharged_sdx/xrs
-$ sudo ./route_server.py multi_sdx 1
+$ sudo ./route_server.py multi_sdx_h 1
 ```
 
 Start __ExaBGP__  
 
 ```bash
-$ exabgp ~/supercharged_sdx/examples/multi_sdx/controller-1/sdx_config/bgp.conf --env ~/supercharged_sdx/examples/multi_sdx/controller-1/sdx_config/exabgp.env
+$ exabgp ~/supercharged_sdx/examples/multi_sdx_h/controller-1/sdx_config/bgp.conf --env ~/supercharged_sdx/examples/multi_sdx_h/controller-1/sdx_config/exabgp.env
 ```
 
 ### SDX 2
 Start __Ryu__ - The Controller
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx --asdx-controller 2 --ofp-tcp-listen-port 5533 --wsapi-port 8090
+$ ryu-manager ~/supercharged_sdx/ctrl/asdx.py --asdx-dir multi_sdx_h --asdx-controller 2 --ofp-tcp-listen-port 5533 --wsapi-port 8090
 ```
 
 Start the __Route Server__
 
 ```bash
 $ cd ~/supercharged_sdx/xrs
-$ sudo ./route_server.py multi_sdx 2
+$ sudo ./route_server.py multi_sdx_h 2
 ```
 
 Start __ExaBGP__
 
 ```bash
-$ exabgp ~/supercharged_sdx/examples/multi_sdx/controller-2/sdx_config/bgp.conf --env ~/supercharged_sdx/examples/multi_sdx/controller-2/sdx_config/exabgp.env
+$ exabgp ~/supercharged_sdx/examples/multi_sdx_h/controller-2/sdx_config/bgp.conf --env ~/supercharged_sdx/examples/multi_sdx_h/controller-2/sdx_config/exabgp.env
 ```
 
 After using it, make sure to __remove__ old RIBs  
@@ -82,17 +82,17 @@ _Participant F - outbound:_
 
 #### 1  
 
-    mininext> x1 iperf -s -B 10.0.0.1 -p 80 &  
-    mininext> a1 iperf -c 10.0.0.1 -B 20.0.0.1 -p 80 -t 2    
+    mininext> h1_x1 iperf -s -B 10.0.0.1 -p 80 &  
+    mininext> h1_a1 iperf -c 10.0.0.1 -B 20.0.0.1 -p 80 -t 2    
 
 #### 2  
 
-    mininext> x1 iperf -s -B 10.0.0.1 -p 4321 &  
-    mininext> a1 iperf -c 10.0.0.1 -B 20.0.0.1 -p 4321 -t 2    
+    mininext> h1_x1 iperf -s -B 10.0.0.1 -p 4321 &  
+    mininext> h1_a1 iperf -c 10.0.0.1 -B 20.0.0.1 -p 4321 -t 2    
 
 #### 3
 
-    mininext> d1 iperf -s -B 30.0.0.1 -p 4322 &
-    mininext> a1 iperf -c 30.0.0.1 -B 20.0.0.1 -p 4322 -t 2
+    mininext> h1_d1 iperf -s -B 30.0.0.1 -p 4322 &
+    mininext> h1_a1 iperf -c 30.0.0.1 -B 20.0.0.1 -p 4322 -t 2
 
 In case the `iperf` connection is not successful, you should see the message, `connect failed: Connection refused.`
