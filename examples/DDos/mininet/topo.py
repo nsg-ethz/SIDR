@@ -108,7 +108,7 @@ class SDNTopo( Topo ):
            other_interfaces = [
                {'ip': '172.6.0.2/16'},
            ],
-           networks = None, 
+           networks = ['60.0.0.0/24'], 
            AS = 600,
            neighbors = [ {'name': 'v3', 'address': '172.6.0.3', 'as': 900} ])
 
@@ -119,16 +119,16 @@ class SDNTopo( Topo ):
            other_interfaces = [
                {'ip': '172.7.0.2/16'},
            ],
-           networks = None, 
+           networks = ['70.0.0.0/24'], 
            AS = 700,
            neighbors = [{'name': 'v4', 'address': '172.7.0.3', 'as': 900}  ]
         )
         self.routers['h1'] = self.addAutonomousSystem(
            sdx_fabric=sdx2_fabric, 
            name = 'h1', 
-           sdx_interface = {'ip': '172.255.0.4/16', 'mac': '08:00:27:bd:f8:b2'},
+           sdx_interface = {'ip': '172.255.0.4/16', 'mac': '08:00:37:bd:f8:b2'},
            other_interfaces = [
-               {'ip': '172.8.0.2/16'},
+               {'ip': '172.9.0.2/16'},
            ],
            networks = ['80.0.0.0/24'], 
            AS = 800,
@@ -144,11 +144,10 @@ class SDNTopo( Topo ):
                {'ip': '172.3.0.3/16'},
                {'ip': '172.8.0.5/16'},
            ],
-           networks =['70.0.0.0/16'],
+           networks =['90.0.0.0/16'],
            AS = 900,
            neighbors = [ 
                {'name': 'c1', 'address': '172.3.0.2', 'as': 300},
-               {'name': 'v', 'address': '172.8.0.1', 'as': 900},
            ]
         )
       
@@ -160,11 +159,10 @@ class SDNTopo( Topo ):
                {'ip': '172.4.0.3/16'},
                {'ip': '172.8.0.6/16'},
            ],
-           networks =None,
+           networks =['90.0.0.0/16'],
            AS = 900,
            neighbors = [
                {'name': 'd1', 'address': '172.4.0.2', 'as': 400},
-               {'name': 'v', 'address': '172.8.0.2', 'as': 900},
            ]
         )
         self.routers['v3'] = self.addAutonomousSystem(
@@ -175,11 +173,10 @@ class SDNTopo( Topo ):
                {'ip': '172.6.0.3/16'},
                {'ip': '172.8.0.7/16'},
            ],
-           networks = None,
+           networks = ['90.0.0.0/16'],
            AS = 900,
            neighbors = [
-               {'name': 'g1', 'address': '172.6.0.2', 'as': 600},
-               {'name': 'v', 'address': '172.8.0.3', 'as': 900},
+               {'name': 'f1', 'address': '172.6.0.2', 'as': 600},
            ]
         )        
 	self.routers['v4'] = self.addAutonomousSystem(
@@ -190,34 +187,12 @@ class SDNTopo( Topo ):
                {'ip': '172.7.0.3/16'},
                {'ip': '172.8.0.8/16'},
            ],
-           networks = None,
+           networks = ['90.0.0.0/16'],
            AS = 900,
            neighbors = [
                {'name': 'g1', 'address': '172.7.0.2', 'as': 700},
-               {'name': 'v', 'address': '172.8.0.4', 'as': 900},
            ]
         )
-
-        self.routers['v'] = self.addAutonomousSystem(
-           sdx_fabric=None,
-           name = 'v',
-           sdx_interface=None,
-           other_interfaces = [
-               {'ip': '172.8.0.1/16'},
-               {'ip': '172.8.0.2/16'},
-               {'ip': '172.8.0.3/16'},
-               {'ip': '172.8.0.4/16'},
-           ],
-           networks = ['90.0.0.0/8'],
-           AS = 900,
-           neighbors = [
-               {'name': 'v1', 'address': '172.8.0.5', 'as': 900},
-               {'name': 'v2', 'address': '172.8.0.6', 'as': 900},
-               {'name': 'v3', 'address': '172.8.0.7', 'as': 900},
-               {'name': 'v4', 'address': '172.8.0.8', 'as': 900},
-           ]
-        )
-
         # Add root node for route server of SDX 1 - exaBGP - and connect it to the fabric
         sdx1_rs = self.addHost('rs1', ip = '172.0.255.254/16', inNamespace = False)
         self.addLink(sdx1_rs, sdx1_fabric['switch'])
