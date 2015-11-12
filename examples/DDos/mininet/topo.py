@@ -71,7 +71,7 @@ class SDNTopo( Topo ):
            other_interfaces = [
                {'ip': '172.3.0.2/16'},
            ],
-           networks =   None,
+           networks = ['30.0.0.0/16']  ,
            AS = 300, 
            neighbors = [ {'name': 'v1', 'address': "172.3.0.3", 'as': 900} ]
         )
@@ -82,7 +82,7 @@ class SDNTopo( Topo ):
            other_interfaces = [
                {'ip': '172.4.0.2/16'},
            ],
-           networks = None,  
+           networks =['40.0.0.0/16'],  
            AS = 400, 
            neighbors = [{'name': 'v2', 'address': '172.4.0.3', 'as': 900}  ]
         )
@@ -110,7 +110,7 @@ class SDNTopo( Topo ):
            ],
            networks = None, 
            AS = 600,
-           neighbors = [ {'name': 'v4', 'address': '172.6.0.3', 'as': 900} ])
+           neighbors = [ {'name': 'v3', 'address': '172.6.0.3', 'as': 900} ])
 
         self.routers['g1'] = self.addAutonomousSystem(
            sdx_fabric=sdx2_fabric, 
@@ -121,7 +121,7 @@ class SDNTopo( Topo ):
            ],
            networks = None, 
            AS = 700,
-           neighbors = [{'name': 'v3', 'address': '172.7.0.3', 'as': 900}  ]
+           neighbors = [{'name': 'v4', 'address': '172.7.0.3', 'as': 900}  ]
         )
         self.routers['h1'] = self.addAutonomousSystem(
            sdx_fabric=sdx2_fabric, 
@@ -142,12 +142,12 @@ class SDNTopo( Topo ):
            sdx_interface=None,
            other_interfaces = [
                {'ip': '172.3.0.3/16'},
-               {'ip': '172.8.0.6/16'},
+               {'ip': '172.8.0.5/16'},
            ],
-           networks =None,
+           networks =['70.0.0.0/16'],
            AS = 900,
            neighbors = [ 
-               {'name': 'c1', 'address': '172.3.0.2', 'as': 300}
+               {'name': 'c1', 'address': '172.3.0.2', 'as': 300},
                {'name': 'v', 'address': '172.8.0.1', 'as': 900},
            ]
         )
@@ -163,7 +163,7 @@ class SDNTopo( Topo ):
            networks =None,
            AS = 900,
            neighbors = [
-               {'name': 'd1', 'address': '172.4.0.2', 'as': 400}
+               {'name': 'd1', 'address': '172.4.0.2', 'as': 400},
                {'name': 'v', 'address': '172.8.0.2', 'as': 900},
            ]
         )
@@ -172,13 +172,13 @@ class SDNTopo( Topo ):
            name = 'v3',
            sdx_interface=None,
            other_interfaces = [ 
-               {'ip': '172.7.0.3/16'},
+               {'ip': '172.6.0.3/16'},
                {'ip': '172.8.0.7/16'},
            ],
            networks = None,
            AS = 900,
            neighbors = [
-               {'name': 'g1', 'address': '172.7.0.2', 'as': 700},
+               {'name': 'g1', 'address': '172.6.0.2', 'as': 600},
                {'name': 'v', 'address': '172.8.0.3', 'as': 900},
            ]
         )        
@@ -187,13 +187,13 @@ class SDNTopo( Topo ):
            name = 'v4',
            sdx_interface=None,
            other_interfaces = [
-               {'ip': '172.6.0.3/16'}
-               {'ip': '172.8.0.8/16'}
+               {'ip': '172.7.0.3/16'},
+               {'ip': '172.8.0.8/16'},
            ],
            networks = None,
            AS = 900,
            neighbors = [
-               {'name': 'f1', 'address': '172.6.0.2', 'as': 600},
+               {'name': 'g1', 'address': '172.7.0.2', 'as': 700},
                {'name': 'v', 'address': '172.8.0.4', 'as': 900},
            ]
         )
