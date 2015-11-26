@@ -347,11 +347,11 @@ class aSDX(app_manager.RyuApp):
                     dst_participant_name = policy.action["fwd"]
 
                     participant = self.config.participants[src_participant_name]
-                    policy_id = participant.policies.index(policy)
+                    policy_id = participant.policies["outbound"].index(policy)
 
                     activated = policy_id in participant.activated_policies
 
-                    if self.correctness_module.check_policy(nh_sdx=nh_sdx):
+                    if self.correctness_module.check_policy(nh_sdx=[nh_sdx]):
                         if not activated:
                             for superset in self.config.supersets[participant_id]:
                                 vmac_bitmask = vmac_participant_match(2**self.config.superset_id_size-1,
