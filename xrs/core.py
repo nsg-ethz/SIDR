@@ -42,13 +42,12 @@ class XRS():
         self.bgp_advertisements = "Best Path"
         
         self.VMAC_size = 48
-
-        self.base_url = 'http://localhost:8080'
+        
         self.rest_api_url = 'http://localhost:8080/asdx/supersets'
         
         self.VNHs = IPNetwork('172.0.1.1/24')
 
-        self.interface = "exabgp-eth0"
+	self.interface = "exabgp-eth0"
 
         self.policy_file = "sdx_policies.cfg"
         
@@ -96,12 +95,9 @@ def parse_config(base_path, config_file):
     if ("VNHs" in config):
         xrs.VNHs = IPNetwork(config["VNHs"])
 
-
-    if "Base URL" in config:
-        xrs.base_url = config["Base URL"]
-
-    if ("Superset URL" in config):
-        xrs.rest_api_url = xrs.base_url + "" + config["Superset URL"]
+    if ("REST API URL" in config):
+        if ("Long" in config["REST API URL"]):
+            xrs.rest_api_url = config["REST API URL"]["Long"]
 
     if ("Participants" in config):    
         peers_out = {}
