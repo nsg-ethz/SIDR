@@ -58,3 +58,6 @@ target/
 
 # Vagrant things
 .vagrant/
+
+# PyCharm
+.idea/

@@ -6,7 +6,7 @@
 import socket,struct
 from rib import rib
 
-def decision_process(participants,route):
+def decision_process(participants, route):
     best_routes = []
     
     #Need to loop through all participants

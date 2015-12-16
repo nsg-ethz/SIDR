@@ -3,40 +3,22 @@
 #  Muhammad Shahbaz (muhammad.shahbaz@gatech.edu)
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
-import json
-import sqlite3
 from rib import rib
 
 LOG = False
 
-class peer():
-    
-    def __init__(self, asn, ports, peers_in, peers_out, fwd_peers):
-        
+
+class Peer():
+    def __init__(self, asn):
         self.asn = asn
-        self.ports = ports
+
         self.down = True
         
-        ips = []
-        for port in ports:
-            ips.append(port["IP"])
-        
-        self.rib = {"input": rib("-".join(ips),"input"),
-                    "local": rib("-".join(ips),"local"),
-                    "output": rib("-".join(ips),"output")}
-                    
-        # peers that a participant accepts traffic from and sends advertisements to            
-        self.peers_in = peers_in
-        # peers that the participant can send its traffic to and gets advertisements from
-        self.peers_out = peers_out
-        # peers that the participant is actually sending traffic to based on the policies
-        self.fwd_peers = fwd_peers
-        # peers that the participant is not allowed to send any traffic to to avoid loops
-        self.no_fwd_peers = {}
+        self.rib = {"input": rib(asn, "input"),
+                    "local": rib(asn, "local"),
+                    "output": rib(asn, "output")}
          
-    def update(self,route):
-        updates = []
-        key = {}
+    def update(self, route):
         
         origin = None
         as_path = None
@@ -46,8 +28,8 @@ class peer():
         
         route_list = []
    
-        if ('state' in route['neighbor']):
-            if (route['neighbor']['state']=='down'):
+        if 'state' in route['neighbor']:
+            if route['neighbor']['state']=='down':
                 if LOG:
                     print "PEER DOWN - ASN "+str(self.asn)
 
@@ -62,7 +44,7 @@ class peer():
                 self.rib["input"].delete_all()
                 self.rib["input"].commit()
 
-            elif (route['neighbor']['state']=='up'):
+            elif route['neighbor']['state']=='up':
                 # announce all existing prefixes from local rib
                 if LOG: 
                     print "PEER UP - ASN "+str(self.asn)
@@ -72,9 +54,9 @@ class peer():
                 for route_item in routes:
                     route_list.append({'re-announce': route_item})
 
-        if ('message' in route['neighbor']):
-            if ('update' in route['neighbor']['message']):
-                if ('attribute' in route['neighbor']['message']['update']):
+        if 'message' in route['neighbor']:
+            if 'update' in route['neighbor']['message']:
+                if 'attribute' in route['neighbor']['message']['update']:
                     attribute = route['neighbor']['message']['update']['attribute']
                             
                     origin = attribute['origin'] if 'origin' in attribute else ''
@@ -101,9 +83,9 @@ class peer():
                                 
                     atomic_aggregate = attribute['atomic-aggregate'] if 'atomic-aggregate' in attribute else ''
                         
-                if ('announce' in route['neighbor']['message']['update']):
+                if 'announce' in route['neighbor']['message']['update']:
                     announce = route['neighbor']['message']['update']['announce']
-                    if ('ipv4 unicast' in announce):
+                    if 'ipv4 unicast' in announce:
                         for next_hop in announce['ipv4 unicast'].keys():
                             for prefix in announce['ipv4 unicast'][next_hop].keys():
                                 self.rib["input"][prefix] = (next_hop,
@@ -117,9 +99,9 @@ class peer():
                                         
                                 route_list.append({'announce': announce_route})
 
-                elif ('withdraw' in route['neighbor']['message']['update']):
+                elif 'withdraw' in route['neighbor']['message']['update']:
                     withdraw = route['neighbor']['message']['update']['withdraw']
-                    if ('ipv4 unicast' in withdraw):
+                    if 'ipv4 unicast' in withdraw:
                         for prefix in withdraw['ipv4 unicast'].keys():
                             deleted_route = self.rib["input"][prefix]
                             self.rib["input"].delete(prefix)
@@ -137,6 +119,7 @@ class peer():
             self.rib["local"].commit()
             self.rib["output"].delete_all()
             self.rib["output"].commit()
+
             # TODO: send shutdown notification to participants 
     
     def add_route(self,rib_name,prefix,attributes):
@@ -176,7 +159,7 @@ class peer():
 ''' main '''    
 if __name__ == '__main__':
     
-    mypeer = peer('172.0.0.22')
+    mypeer = Peer('172.0.0.22')
     
     route = '''{ "exabgp": "2.0", "time": 1387421714, "neighbor": { "ip": "172.0.0.21", "update": { "attribute": { "origin": "igp", "as-path": [ [ 300 ], [ ] ], "med": 0, "atomic-aggregate": false }, "announce": { "ipv4 unicast": { "140.0.0.0/16": { "next-hop": "172.0.0.22" }, "150.0.0.0/16": { "next-hop": "172.0.0.22" } } } } } }'''
     

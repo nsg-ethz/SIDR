@@ -4,6 +4,7 @@
 
 LOG = True
 
+
 def get_all_participants_advertising(prefix, participants):
     participant_set = set()
    
@@ -13,7 +14,7 @@ def get_all_participants_advertising(prefix, participants):
             participant_set.add(participant_name)
             
     return participant_set
-    
+
 def get_all_as_paths(prefix, participants):
     as_sets = {}
    
@@ -23,7 +24,8 @@ def get_all_as_paths(prefix, participants):
             as_sets[participant_name] = route['as_path']
             
     return as_sets
-    
+
+
 def get_all_participant_sets(xrs):
     participant_sets = []
      
@@ -31,7 +33,8 @@ def get_all_participant_sets(xrs):
         participant_sets.append(get_all_participants_advertising(prefix, xrs.participants))
             
     return participant_sets    
-    
+
+
 def bgp_update_peers(updates, xrs):
     changes = []
 
@@ -105,7 +108,8 @@ def bgp_update_peers(updates, xrs):
                                 print announcement
                             xrs.server.sender_queue.put(announcement)
     return changes
-                        
+
+
 def bgp_routes_are_equal(route1, route2):
     if route1 is None:
         return False
@@ -116,6 +120,7 @@ def bgp_routes_are_equal(route1, route2):
     if (route1['as_path'] != route2['as_path']):
         return False
     return True
+
 
 def bgp_make_route_advertisement(xrs, participant_name, prefix):
 
@@ -146,9 +151,11 @@ def bgp_make_route_advertisement(xrs, participant_name, prefix):
         return route
     return None
 
+
 def get_best_path(xrs, participant_name, prefix):
     route = xrs.participants[participant_name].get_route('local', prefix)
     return route['as_path'] if route else ""
+
 
 def get_as_set(xrs, participant_name, peers, prefix):
     as_path = []
@@ -176,6 +183,7 @@ def get_as_set(xrs, participant_name, peers, prefix):
 
     return as_path_attribute
 
+
 def get_policy_as_set(xrs, participant_name, prefix):
     peers = []
     peers.extend(xrs.participants[participant_name].fwd_peers)
@@ -188,6 +196,7 @@ def get_policy_as_set(xrs, participant_name, prefix):
 
     as_path_attribute = get_as_set(xrs, participant_name, peers, prefix)
     return as_path_attribute
+
 
 def get_blocking_policy_as_set(xrs, participant_name, prefix):
     peers = []
@@ -224,13 +233,15 @@ def get_blocking_policy_as_set(xrs, participant_name, prefix):
 
     as_path_attribute = get_as_set(xrs, participant_name, peers, prefix)
     return as_path_attribute
-        
+
+
 def announce_route(neighbor, prefix, next_hop, as_path):
            
     msg = "neighbor " + neighbor + " announce route " + prefix + " next-hop " + str(next_hop)
     msg += " as-path [ " + as_path + " ]"
 
     return msg
+
 
 def withdraw_route(neighbor, prefix, next_hop):
 

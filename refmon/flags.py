@@ -84,9 +84,9 @@ CONF.register_cli_opts([
 ], group='test-switch')
 
 CONF.register_cli_opts([
-    # aSDX
-    cfg.StrOpt('dir', default='simple',
-               help='directory where the example resides'),
-    cfg.StrOpt('controller', default='1',
-               help='number of controller in multi SDX'),
-], group='asdx')
+    # refmon
+    cfg.StrOpt('config', default=None,
+               help='path of config file'),
+    cfg.StrOpt('flowmodlog', default=None,
+               help='path of flowmod log file'),
+], group='refmon')

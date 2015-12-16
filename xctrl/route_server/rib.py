@@ -9,8 +9,8 @@ from threading import RLock as lock
 class rib():
     
     def __init__(self,ip,name):
-        
-        with lock():
+        self.lock = lock()
+        with self.lock:
             # Create a database in RAM
             base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"ribs"))
             self.db = sqlite3.connect(base_path+'/'+ip+'.db',check_same_thread=False)
@@ -28,7 +28,7 @@ class rib():
     
     def __del__(self):
             
-        with lock():
+        with self.lock:
             self.db.close()
         
     def __setitem__(self,key,item): 
@@ -41,7 +41,7 @@ class rib():
         
     def add(self,key,item):
         
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
         
             if (isinstance(item,tuple) or isinstance(item,list)):
@@ -57,7 +57,7 @@ class rib():
             
     def add_many(self,items):
         
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
         
             if (isinstance(items,list)):
@@ -66,7 +66,7 @@ class rib():
             
     def get(self,key): 
         
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
             cursor.execute('''select * from ''' + self.name + ''' where prefix = ?''', (key,))
         
@@ -74,7 +74,7 @@ class rib():
     
     def get_all(self,key=None): 
         
-        with lock():    
+        with self.lock:
             cursor = self.db.cursor()
         
             if (key is not None):
@@ -86,7 +86,7 @@ class rib():
     
     def filter(self,item,value): 
             
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
         
             script = "select * from " + self.name + " where " + item + " = '" + value + "'"
@@ -97,7 +97,7 @@ class rib():
     
     def update(self,key,item,value):
         
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
         
             script = "update " + self.name + " set " + item + " = '" + value + "' where prefix = '" + key + "'"
@@ -106,7 +106,7 @@ class rib():
             
     def update_many(self,key,item):
         
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
         
             if (isinstance(item,tuple) or isinstance(item,list)):
@@ -121,7 +121,7 @@ class rib():
         
     def delete(self,key):
         
-        with lock():
+        with self.lock:
             # TODO: Add more granularity in the delete process i.e., instead of just prefix, 
             # it should be based on a conjunction of other attributes too.
         
@@ -131,19 +131,19 @@ class rib():
         
     def delete_all(self):
         
-        with lock():
+        with self.lock:
             cursor = self.db.cursor()
         
             cursor.execute('''delete from ''' + self.name)
     
     def commit(self):
         
-        with lock():
+        with self.lock:
             self.db.commit()
         
     def rollback(self):
         
-        with lock():
+        with self.lock:
             self.db.rollback()
 
 ''' main '''     
