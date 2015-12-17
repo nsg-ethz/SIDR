@@ -39,7 +39,7 @@ def send_policy(time_2_policy, address, port):
             if LOG:
                 print "response received: ", recv
             policy_socket.close()
-    time.sleep(1)
+        time.sleep(1)
 
 
 def parse_config(sdx_id):
