@@ -36,7 +36,7 @@ class PolicyHandler(object):
         self.logger.info('start')
         self.controller.start()
 
-        self.listener = Listener((self.config.policy.address, self.config.policy.port), authkey=None)
+        self.listener = Listener((self.config.policy_handler.address, self.config.policy_handler.port), authkey=None)
         self.run = True
         while self.run:
             conn = self.listener.accept()
@@ -81,6 +81,12 @@ class PolicyHandler(object):
                 if policy.forward_participant == egress_participant:
                     ingress_participants.add(participant)
         return ingress_participants
+
+
+class PolicyHandlerConfig(object):
+    def __init__(self, address, port):
+        self.address
+        self.port
 
 
 class Policy(object):

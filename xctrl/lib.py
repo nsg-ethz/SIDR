@@ -11,6 +11,7 @@ from route_server.route_server import RouteServerConfig
 from vmac_encoder.supersets import SuperSetEncoderConfig
 from arp_proxy.arp_proxy import ARPProxyConfig
 from loop_detection.loop_detector import LoopDetectorConfig
+from policies.policies import PolicyHandlerConfig
 
 
 class Config():
@@ -25,6 +26,7 @@ class Config():
         self.arp_proxy = None
         self.vmac_encoder = None
         self.loop_detector = None
+        self.policy_handler = None
 
         self.participants = {}
         self.port_2_participant = {}
@@ -90,6 +92,13 @@ class Config():
                     if "Loop Detector" in sdx:
                         if "Max Random Value" in sdx["Loop Detector"]:
                             max_random_value = sdx["Loop Detector"]["Max Random Value"]
+
+                    if "Policy Handler" in sdx:
+                        if "Address" in sdx["Policy Handler"]:
+                            tmp_address = sdx["Policy Handler"]["Address"]
+                        if "Port" in sdx["Policy Handler"]:
+                            tmp_port = sdx["Policy Handler"]["Port"]
+                        self.policy_handler = PolicyHandlerConfig(tmp_address, tmp_port)
 
                     if "Route Server" in sdx:
                         if "IP" in sdx["Route Server"]:
