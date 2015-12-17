@@ -7,7 +7,7 @@ import sqlite3
 from threading import RLock as lock
 
 
-# TODO add withdraw and new announce
+# TODO delete entries after changes
 
 class CIB(object):
     def __init__(self):
@@ -40,7 +40,7 @@ class CIB(object):
         with self.lock:
             self.db.rollback()
 
-    def update_in(self, ingress_participant, prefix, sender_sdx, sdx_set):
+    def update_in(self, type, ingress_participant, prefix, sender_sdx, sdx_set=False):
         new_entry = {"i_participant": ingress_participant,
                      "prefix": prefix,
                      "sender_sdx": sender_sdx,
@@ -50,16 +50,23 @@ class CIB(object):
             cursor = self.db.cursor()
 
             old_entry = cursor.execute('SELECT i_participant, prefix, sender_sdx, sdx_set FROM input '
-                                       'WHERE i_participant = ? AND prefix = ? AND sender_sdx = ?',
-                                       (ingress_participant, prefix, sender_sdx))
+                                           'WHERE i_participant = ? AND prefix = ? AND sender_sdx = ?',
+                                           (ingress_participant, prefix, sender_sdx))
+            if type == "withdraw":
+                cursor.execute('DELETE FROM input WHERE i_participant = ? AND prefix = ? AND sender_sdx = ?',
+                               (ingress_participant, prefix, sender_sdx))
+                self.db.commit()
+            else:
+                sdx_set = list(sdx_set)
+                sdx_set.sort()
+                if not old_entry or old_entry["sdx_set"] != sdx_set:
+                    cursor.execute('INSERT OR REPLACE INTO input (i_participant, prefix, sender_sdx, sdx_set)'
+                                       'VALUES (?,?,?,?)', (ingress_participant, prefix, sender_sdx, sdx_set))
+                    self.db.commit()
 
-            sdx_set = list(sdx_set).sort()
-            if not old_entry or old_entry["sdx_set"] != sdx_set:
-                cursor.execute('INSERT OR REPLACE INTO input (i_participant, prefix, sender_sdx, sdx_set) '
-                               'VALUES (?,?,?,?)', (ingress_participant, prefix, sender_sdx, sdx_set))
-
-                return True, old_entry, new_entry
+                    return True, old_entry, new_entry
             return False, None, None
+
 
     def update_loc(self, ingress_participant, prefix):
         with self.lock:
@@ -69,16 +76,23 @@ class CIB(object):
                            (ingress_participant, prefix))
             ci_entries = cursor.fetchall()
 
-            new_entry = CIB.merge_ci_entries(ci_entries)
             old_entry = cursor.execute('SELECT i_participant, prefix, sdx_set FROM local '
                                        'WHERE i_participant = ? AND prefix = ?',
                                        (ingress_participant, prefix))
+            if ci_entries:
+                new_entry = CIB.merge_ci_entries(ci_entries)
+                if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
+                    cursor.execute('INSERT OR REPLACE INTO local (i_participant, prefix, sdx_set) '
+                                   'VALUES (?,?,?,?)', (ingress_participant, prefix, new_entry["sdx_set"]))
+                    self.db.commit()
 
-            if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
-                cursor.execute('INSERT OR REPLACE INTO local (i_participant, prefix, sdx_set) '
-                               'VALUES (?,?,?,?)', (ingress_participant, prefix, new_entry["sdx_set"]))
-
-                return True, old_entry, new_entry
+                    return True, old_entry, new_entry
+            else:
+                if old_entry:
+                    cursor.execute('DELETE FROM local WHERE i_participant = ? AND prefix = ?',
+                                   (ingress_participant, prefix))
+                    self.db.commit()
+                return True, old_entry, None
             return False, None, None
 
     @staticmethod
@@ -105,16 +119,23 @@ class CIB(object):
             cursor.execute(query, (ingress_participants, prefix))
             cl_entries = cursor.fetchall()
 
-            new_entry = CIB.merge_cl_entries(egress_participant, self.config.id, cl_entries)
             old_entry = cursor.execute('SELECT e_participant, prefix, sdx_set FROM output '
                                        'WHERE e_participant = ? AND prefix = ?',
                                        (egress_participant, prefix))
+            if cl_entries:
+                new_entry = CIB.merge_cl_entries(egress_participant, self.config.id, cl_entries)
 
-            if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
-                cursor.execute('INSERT OR REPLACE INTO output (e_participant, prefix, receiver_participant, sdx_set) '
-                               'VALUES (?,?,?,?,?)', (egress_participant, prefix, receiver_participant, new_entry["sdx_set"]))
-
-                return True, old_entry, new_entry
+                if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
+                    cursor.execute('INSERT OR REPLACE INTO output (e_participant, prefix, receiver_participant, sdx_set) '
+                                   'VALUES (?,?,?,?,?)', (egress_participant, prefix, receiver_participant, new_entry["sdx_set"]))
+                    self.db.commit()
+                    return True, old_entry, new_entry
+            else:
+                if old_entry:
+                    cursor.execute('DELETE FROM output WHERE e_participant = ? AND prefix = ?',
+                                   (egress_participant, prefix))
+                    self.db.commit()
+                return True, old_entry, None
             return False, None, None
 
     @staticmethod
@@ -131,6 +152,15 @@ class CIB(object):
         merged_entry["sdx_set"] = list(merged_entry["sdx_set"])
         merged_entry["sdx_set"].sort()
         return merged_entry
+
+    def get_cl_entry(self, prefix, ingress_participant):
+        with self.lock:
+            cursor = self.db.cursor()
+            query = 'SELECT i_participant, prefix, sdx_set FROM local WHERE i_participant = ? AND prefix = ?'
+            cursor.execute(query, (ingress_participant, prefix))
+            cl_entry = cursor.fetchall()
+        return cl_entry
+
 
 ''' main '''
 if __name__ == '__main__':

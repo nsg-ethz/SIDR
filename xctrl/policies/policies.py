@@ -7,21 +7,22 @@ import argparse
 import logging
 
 from multiprocessing.connection import Listener
+from collections import defaultdict
 
 from flowmodsender import FlowModSender # REST API
 from gss import GSSmT
 
 
-class Policy(object):
+class PolicyHandler(object):
     def __init__(self, config, event_queue, debug, supersets, loop_detector):
-        super(Policy, self).__init__(config, event_queue, debug)
+        super(PolicyHandler, self).__init__(config, event_queue, debug)
         self.logger = logging.getLogger('xctrl')
         self.logger.info('init')
 
         self.supersets = supersets
         self.loop_detector = loop_detector
 
-        self.policies = None
+        self.policies = defaultdict(dict)
 
         self.client = FlowModSender(self.config.refmon["url"]) # REST API
 
@@ -41,22 +42,49 @@ class Policy(object):
             conn = self.listener.accept()
             tmp = conn.recv()
 
-            policy_request = json.loads(tmp)
+            policy = json.loads(tmp)
 
-            self.loop_detector.activate_policy(ingress_participant, egress_participant)
+            if policy["type"] == "outbound":
+                safe_to_install = self.loop_detector.activate_policy(policy["participant"], policy["action"]["fwd"])
+            else:
+                safe_to_install = True
+
+            if safe_to_install:
+                self.policies[policy["participant"]][policy["type"]] = Policy(policy["match"],
+                                                                              policy["action"],
+                                                                              policy["action"]["fwd"])
+                reply = "Policy Accepted"
+            else:
+                reply = "Policy Rejected"
 
             conn.send(reply)
-
             conn.close()
+
+            if safe_to_install:
+                # push flow rule to switch
+                pass
 
     def stop(self):
         self.logger.info('stop')
+        self.run = False
 
-    
-''' main '''    
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('config', help='path of config file')
-    args = parser.parse_args() 
-    
-    main(args)
+    def get_egress_participants(self, ingress_participant):
+        egress_participants = set()
+        for policy in self.policies[ingress_participant]["outbound"]:
+            egress_participants.add(policy.forward_participant)
+        return egress_participants
+
+    def get_ingress_participants(self, egress_participant):
+        ingress_participants = set()
+        for participant in self.policies:
+            for policy in self.policies[participant]["outbound"]:
+                if policy.forward_participant == egress_participant:
+                    ingress_participants.add(participant)
+        return ingress_participants
+
+
+class Policy(object):
+    def __init__(self, match, action, forward_participant):
+        self.match = match
+        self.action = action
+        self.forward_participant = forward_participant

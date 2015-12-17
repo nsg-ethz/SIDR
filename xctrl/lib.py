@@ -195,6 +195,6 @@ class XCTRLModule(object):
 
 class XCTRLEvent(object):
     def __init__(self, origin, type, data):
-        self.origin
-        self.type
-        self.data
+        self.origin = origin
+        self.type = type
+        self.data = data

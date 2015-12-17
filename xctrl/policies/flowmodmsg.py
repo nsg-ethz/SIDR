@@ -41,7 +41,6 @@ class FlowModMsgBuilder(object):
         msg = {
                 "auth_info": {
                                "participant" : self.participant,
-                               "key" : self.key
                              },
                 "flow_mods": self.flow_mods
               }

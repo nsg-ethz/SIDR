@@ -13,8 +13,10 @@ from netaddr import IPNetwork
 
 
 class SuperSetEncoder(XCTRLModule):
-    def __init__(self, config, event_queue, debug):
+    def __init__(self, config, event_queue, debug, route_server, loop_detection):
         super(SuperSetEncoder, self).__init__(config, event_queue, debug)
+        self.rib = route_server
+        self.loop_detection = loop_detection
 
         self.supersets = defaultdict(list)
         self.num_vnhs_in_use = 0
@@ -30,7 +32,7 @@ class SuperSetEncoder(XCTRLModule):
                 prefix = update['announce']['prefix']
 
                 # get set of all participants advertising that prefix
-                basic_set = SuperSetEncoder.get_all_participants_advertising(prefix, self.config.participants)
+                basic_set = self.rib.get_all_participants_advertising(prefix, self.config.participants)
 
                 # check if this set is a subset of one of the existing supersets
                 if not SuperSetEncoder.is_subset_of_superset(basic_set, self.supersets):
@@ -49,7 +51,7 @@ class SuperSetEncoder(XCTRLModule):
                     # staying within the maximum size
                     for i in range(0, len(sorted_diff)):
                         index = diffs.index(sorted_diff[i])
-                        if (unions[index] <= self.config.vmac_encoder.max_superset_size):
+                        if unions[index] <= self.config.vmac_encoder.max_superset_size:
                             new_members = list(basic_set.difference(set(self.supersets[i])))
                             self.supersets[i].extend(new_members)
                             add_superset = False
@@ -73,7 +75,7 @@ class SuperSetEncoder(XCTRLModule):
                                                        "position": self.supersets[superset_index].index(participant)})
 
                     # if preconfigured threshold is exceeded, then start completely from scratch
-                    if (len(self.supersets) > self.config.vmac_encoder.superset_threshold):
+                    if len(self.supersets) > self.config.vmac_encoder.superset_threshold:
                         SuperSetEncoder.recompute_all_supersets()
 
                         sdx_msgs = {"type": "new",
@@ -88,15 +90,14 @@ class SuperSetEncoder(XCTRLModule):
             elif 'withdraw' in update:
                 continue
 
-        # debug output
         self.logger.debug('update_supersets(): ' + str(self.supersets))
 
-        # check which participants joined a new superset and communicate to the SDX controller
+        # check which participants joined a new superset
         return sdx_msgs
 
     def recompute_all_supersets(self):
         # get all sets of participants advertising the same prefix
-        peer_sets = SuperSetEncoder.get_all_participant_sets(self.xrs)
+        peer_sets = self.rib.get_all_participant_sets(self.prefix_2_vnh)
 
         # remove all subsets
         peer_sets.sort(key=len, reverse=True)
@@ -119,23 +120,23 @@ class SuperSetEncoder(XCTRLModule):
                 index = intersects.index(max(intersects))
                 if (len(superset) == self.config.max_size) or (intersects[index] == -1):
                     break
-                if (len(superset.union(peer_sets[index])) <= self.config.max_size):
+                if len(superset.union(peer_sets[index])) <= self.config.max_size:
                     superset = superset.union(peer_sets[index])
                     intersects[index] = -1
             for i in reversed(range(0, len(intersects))):
-                if (intersects[i] == -1):
+                if intersects[i] == -1:
                     peer_sets.remove(peer_sets[i])
             supersets.append(list(superset))
         # check if threshold is still exceeded and if so adjust it
-        if (len(superset) > self.xrs.superset_threshold):
-            self.config.vmac_encoder.superset_threshold = self.config.vmac_encoder.superset_threshold*2
+        if len(superset) > self.xrs.superset_threshold:
+            self.config.vmac_encoder.superset_threshold *= 2
 
         self.supersets = supersets
 
     @staticmethod
     def is_subset_of_superset(subset, supersets):
         for superset in supersets:
-            if ((set(superset)).issuperset(subset)):
+            if (set(superset)).issuperset(subset):
                 return True
         return False
 
@@ -161,7 +162,7 @@ class SuperSetEncoder(XCTRLModule):
             # get corresponding prefix
             prefix = self.vnh_2_prefix[vnh]
             # get set of participants advertising prefix
-            basic_set = get_all_participants_advertising(prefix, self.config.participants)
+            basic_set = self.rib.get_all_participants_advertising(prefix, self.config.participants)
             # get corresponding superset identifier
             superset_identifier = 0
             for i in range(0, len(self.config.vmac_encoder.supersets)):

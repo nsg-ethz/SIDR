@@ -14,6 +14,9 @@ from Queue import Empty
 
 from arp_proxy.arp_proxy import ARPProxy
 from route_server.route_server import RouteServer
+from vmac_encoder.supersets import SuperSetEncoder
+from loop_detection.loop_detector import LoopDetector
+from policies.policies import PolicyHandler
 
 
 class XCTRL(object):
@@ -37,26 +40,36 @@ class XCTRL(object):
 
     def start(self):
         # Start all modules
-
         # route server
         self.modules["route_server"] = RouteServer(self.config, self.event_queue, self.debug)
-        self.threads["route_server"] = Thread(target=self.modules["route_server"].start)
-        self.threads["route_server"].start()
-
-        # arp proxy - needs access to VMAC encoder
-        self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.modules["vmac_encoder"], self.debug)
-        self.threads["arp_proxy"] = Thread(target=self.modules["arp_proxy"].start)
-        self.threads["arp_proxy"].start()
 
         # loop detection - needs access to RIB
+        self.modules["loop_detection"] = LoopDetector(self.config, self.event_queue, self.debug,
+                                                      self.modules["route_server"].rib_interface,
+                                                      None)
 
         # VMAC encoder - needs access to RIB, CIB
+        self.modules["vmac_encoder"] = SuperSetEncoder(self.config, self.event_queue, self.debug,
+                                                       self.modules["route_server"].rib_interface,
+                                                       self.modules["loop_detection"].forbidden_paths)
 
         # policies - needs access to Correctness, VMAC encoder
+        self.modules["policy_handler"] = PolicyHandler(self.config, self.event_queue, self.debug,
+                                                       self.modules["vmac_encoder"],
+                                                       self.modules["loop_detection"].forbidden_paths)
+        self.modules["loop_detection"].policy_handler = self.modules["policy_handler"]
+
+        # arp proxy - needs access to VMAC encoder
+        self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.debug,
+                                             self.modules["vmac_encoder"])
+
+        for name, module in self.modules.iteritems():
+            self.threads[name] = Thread(target=self.modules[name].start)
+            self.threads[name].daemon = True
+            self.threads[name].start()
 
         # Process all incoming events
         self.run = True
-        event = None
         while self.run:
             try:
                 event = self.event_queue.get(True, 1)
@@ -66,12 +79,14 @@ class XCTRL(object):
                 continue
 
             if isinstance(event, XCTRLEvent):
-                if event.type == "RIB UPDATE":
+                if event.type == "UPDATE":
                     # update vnh assignment
                     self.modules["vmac_encoder"].vnh_assignment(event.data)
 
                     # update supersets
                     self.modules["vmac_encoder"].update_supersets(event.data)
+
+                    self.modules["loop_detection"].rib_update(event.data)
 
                 if event.type == "SUPERSET CHANGE":
                     # notify policy module about superset change
@@ -79,7 +94,7 @@ class XCTRL(object):
 
                     # Send Gratuitous ARPs
                     for change in event.data:
-                        self.modules["arp_proxy"].send_gratuitous_arp(event.data)
+                        self.modules["arp_proxy"].send_gratuitous_arp(change)
 
     def stop(self):
         self.run = False
@@ -94,8 +109,8 @@ class XCTRL(object):
 
 def main(argv):
     # locate config file
-    base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"..","examples",
-                                             argv.dir,"controller-"+args.controller))
+    base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples",
+                                             argv.dir, "controller-"+args.controller))
     config_file = os.path.join(base_path, "sdx_config", "sdx_global.cfg")
 
     # start route server

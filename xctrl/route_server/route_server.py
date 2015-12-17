@@ -11,6 +11,7 @@ from decision_process import decision_process
 from bgp_interface import bgp_update_peers
 from xctrl.lib import XCTRLModule, XCTRLEvent
 from peer import Peer
+from rib_interface import RIBInterface
 
 
 class RouteServer(XCTRLModule):
@@ -28,6 +29,8 @@ class RouteServer(XCTRLModule):
         
         self.server = Server(self.config.route_server.port, self.config.route_server.key)
         self.run = False
+
+        self.rib_interface = RIBInterface(self.config, self.rib)
         
     def start(self):
         print "Start Server"
@@ -57,6 +60,9 @@ class RouteServer(XCTRLModule):
                     # update local ribs - select best route for each prefix
                     for update in updates:
                         decision_process(self.rib, update)
+
+                    event = XCTRLEvent("RouteServer", "RIB UPDATE", updates)
+                    self.event_queue.put(event)
 
                     # BGP updates
                     changes = bgp_update_peers(updates, self.config)

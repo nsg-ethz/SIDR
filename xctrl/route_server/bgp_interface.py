@@ -39,9 +39,9 @@ def bgp_update_peers(updates, xrs):
     changes = []
 
     for update in updates:
-        if ('announce' in update or 're-announce' in update):
+        if 'announce' in update or 're-announce' in update:
             as_sets = {}
-            if ('announce' in update):
+            if 'announce' in update:
                 prefix = update['announce']['prefix']
             else:
                 prefix = update['re-announce']['prefix']
