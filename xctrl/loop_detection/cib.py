@@ -10,11 +10,11 @@ from threading import RLock as lock
 # TODO delete entries after changes
 
 class CIB(object):
-    def __init__(self):
+    def __init__(self, sdx_id):
         self.lock = lock()
         with self.lock:
-            base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"cibs"))
-            self.db = sqlite3.connect(base_path+'/cib.db',check_same_thread=False)
+            base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "cibs"))
+            self.db = sqlite3.connect(base_path + '/' + str(sdx_id) + '.db', check_same_thread=False)
             self.db.row_factory = sqlite3.Row
 
             # Get a cursor object
@@ -57,12 +57,13 @@ class CIB(object):
                 cursor.execute('DELETE FROM input WHERE i_participant = ? AND prefix = ? AND sender_sdx = ?',
                                (ingress_participant, prefix, sender_sdx))
                 self.db.commit()
+                return True, old_entry, None
             else:
                 sdx_set = list(sdx_set)
                 sdx_set.sort()
                 if not old_entry or old_entry["sdx_set"] != sdx_set:
                     cursor.execute('INSERT OR REPLACE INTO input (i_participant, prefix, sender_sdx, sdx_set)'
-                                       'VALUES (?,?,?,?)', (ingress_participant, prefix, sender_sdx, sdx_set))
+                                       'VALUES (?,?,?,?)', (ingress_participant, prefix, sender_sdx, ";".join(str(v) for v in new_entry["sdx_set"])))
                     self.db.commit()
 
                     return True, old_entry, new_entry
@@ -85,7 +86,7 @@ class CIB(object):
                 new_entry = CIB.merge_ci_entries(ci_entries)
                 if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
                     cursor.execute('INSERT OR REPLACE INTO local (i_participant, prefix, sdx_set) '
-                                   'VALUES (?,?,?,?)', (ingress_participant, prefix, new_entry["sdx_set"]))
+                                   'VALUES (?,?,?)', (ingress_participant, prefix, ";".join(str(v) for v in new_entry["sdx_set"])))
                     self.db.commit()
 
                     return True, old_entry, new_entry
@@ -104,9 +105,9 @@ class CIB(object):
             if not merged_entry:
                 merged_entry["i_participant"] = entry["i_participant"]
                 merged_entry["prefix"] = entry["prefix"]
-                merged_entry["sdx_set"] = set(entry["sdx_set"].split(';'))
+                merged_entry["sdx_set"] = set([int(v) for v in entry["sdx_set"].split(';')])
             else:
-                merged_entry["sdx_set"] = merged_entry["sdx_set"].union(set(entry["sdx_set"].split(';')))
+                merged_entry["sdx_set"] = merged_entry["sdx_set"].union(set([int(v) for v in entry["sdx_set"].split(';')]))
 
         merged_entry["sdx_set"] = list(merged_entry["sdx_set"])
         merged_entry["sdx_set"].sort()
@@ -129,6 +130,7 @@ class CIB(object):
             old_entry = cursor.fetchone()
 
             active_policy = True if ingress_participants else False
+
             new_entry = CIB.merge_cl_entries(egress_participant, prefix, sdx_id, cl_entries, receiver_participant, active_policy)
 
             if new_entry:
@@ -157,7 +159,7 @@ class CIB(object):
         merged_entry["sdx_set"].add(sdx_id)
         if cl_entries:
             for entry in cl_entries:
-                merged_entry["sdx_set"] = merged_entry["sdx_set"].union(set(entry["sdx_set"].split(';')))
+                merged_entry["sdx_set"] = merged_entry["sdx_set"].union(set([int(v) for v in entry["sdx_set"].split(';')]))
 
         merged_entry["sdx_set"] = list(merged_entry["sdx_set"])
         merged_entry["sdx_set"].sort()

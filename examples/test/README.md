@@ -4,7 +4,9 @@
 
 ```bash
 $ cd ~/supercharged_sdx/xctrl
-$ sudo python xctrl.py test 1 -d
+$ python xctrl.py test 1 -d
+$ python xctrl.py test 2 -d
+$ python xctrl.py test 3 -d
 ```
 
 ## Submit Policy Activation Requests
@@ -12,6 +14,8 @@ $ sudo python xctrl.py test 1 -d
 ```bash
 $ cd ~/supercharged_sdx/policy_submitter
 $ python policy_sender.py test 1
+$ python policy_sender.py test 2
+$ python policy_sender.py test 3
 ```
 
 ## Clean Up

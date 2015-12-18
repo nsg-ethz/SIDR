@@ -53,11 +53,9 @@ class RIBInterface(object):
         participants = set()
 
         if from_participant:
-            for participant in self.config.participants:
-                route = self.rib[from_participant].get_route("input", prefix)
-                if route:
-                    if not (from_participant and from_participant in self.config.participants[participant].peers_out):
-                        participants.add(participant)
+            route = self.rib[from_participant].get_route("input", prefix)
+            if route:
+                participants = set(self.config.participants[from_participant].peers_in)
         else:
             for participant in self.config.participants:
                 route = self.rib[participant].get_route("local", prefix)
@@ -74,7 +72,7 @@ class RIBInterface(object):
         participants = set()
         routes = self.rib[ingress_participant].get_all_routes("local")
         for route in routes:
-            participants.add(self.config.asn_2_participant[route["origin"]])
+            participants.add(self.config.portip_2_participant[route["next_hop"]])
         return participants
 
     def get_route(self, prefix, from_participant, to_participant=None):

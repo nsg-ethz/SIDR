@@ -20,7 +20,7 @@ class LoopDetector(XCTRLModule):
     def __init__(self, config, event_queue, debug, rib, policy_handler):
         super(LoopDetector, self).__init__(config, event_queue, debug)
 
-        self.cib = CIB()
+        self.cib = CIB(self.config.id)
         self.rib = rib
         self.policy_handler = policy_handler
 
@@ -29,10 +29,12 @@ class LoopDetector(XCTRLModule):
 
         self.run = False
         self.listener = Listener((self.config.sdx.address, self.config.sdx.port), authkey=None)
-        self.msg_in_queue = Queue()
-        self.msg_out_queue = Queue()
+        self.msg_in_queue = Queue(1000)
+        self.msg_out_queue = Queue(1000)
 
     def start(self):
+        self.run = True
+
         msg_in_processor = Thread(target=self.process_correctness_message)
         msg_in_processor.daemon = True
         msg_in_processor.start()
@@ -41,7 +43,6 @@ class LoopDetector(XCTRLModule):
         msg_out_processor.daemon = True
         msg_out_processor.start()
 
-        self.run = True
         while self.run:
             conn = self.listener.accept()
             tmp = conn.recv()
@@ -61,7 +62,8 @@ class LoopDetector(XCTRLModule):
         :return:True if safe to install the policy
         """
 
-        self.logger.debug("Received Activation Request from " + str(ingress_participant) + " to " + str(egress_participant))
+        self.logger.debug("Received Activation Request from " + str(ingress_participant) +
+                          " to " + str(egress_participant))
 
         allowed_prefixes = list()
 
@@ -76,16 +78,17 @@ class LoopDetector(XCTRLModule):
 
                 ingress_participants.add(ingress_participant)
                 receiver_participant = self.get_first_sdx_participant_on_path(prefix, egress_participant)
-                update, old_cib_entry, new_cib_entry = self.cib.update_out(egress_participant,
-                                                                           prefix,
-                                                                           receiver_participant,
-                                                                           ingress_participants,
-                                                                           self.config.id)
+                if receiver_participant:
+                    update, old_cib_entry, new_cib_entry = self.cib.update_out(egress_participant,
+                                                                               prefix,
+                                                                               receiver_participant,
+                                                                               ingress_participants,
+                                                                               self.config.id)
 
-                random_value = randint(0, self.config.loop_detector.max_random_value)
-                timestamp = time()
+                    random_value = randint(0, self.config.loop_detector.max_random_value)
+                    timestamp = time()
 
-                self.notify_nh_sdx(update, old_cib_entry, new_cib_entry, timestamp, random_value)
+                    self.notify_nh_sdx(update, old_cib_entry, new_cib_entry, timestamp, random_value)
 
         if allowed_prefixes:
             return True
@@ -103,48 +106,54 @@ class LoopDetector(XCTRLModule):
                 msg = self.msg_in_queue.get(True, 1)
 
             except Empty:
-                #self.logger.debug("Empty Queue")
+                # self.logger.debug("Empty Queue")
                 continue
 
-            self.logger.debug("Received Correctness Message from " + str(msg["sender_sdx"]) + " concerning " + str(msg["prefix"]))
+            ingress_participant = self.config.asn_2_participant[msg["ingress_participant"]]
 
             ci_update, old_ci_entry, new_ci_entry = self.cib.update_in(msg["type"],
-                                                                       msg["ingress_participant"],
+                                                                       ingress_participant,
                                                                        msg["prefix"],
                                                                        msg["sender_sdx"],
                                                                        msg["sdx_set"])
 
             if ci_update:
-                cl_update, old_cl_entry, new_cl_entry = self.cib.update_loc(msg["ingress_participant"], msg["prefix"])
+                cl_update, old_cl_entry, new_cl_entry = self.cib.update_loc(ingress_participant, msg["prefix"])
 
                 if cl_update:
-                    egress_participants = self.policy_handler.get_egress_participants(msg["ingress_participant"])
-                    egress_participants.union(self.rib.get_best_path_participants(msg["ingress_participant"]))
+                    egress_participants = self.policy_handler.get_egress_participants(ingress_participant)
+                    egress_participants.union(self.rib.get_best_path_participants(ingress_participant))
                     filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
                     egress_participants = egress_participants.intersection(filter_participants)
 
+                    for filter_participant in filter_participants:
+                        self.update_forbidden_paths(msg["prefix"],
+                                                    None,
+                                                    set(msg["sdx_set"]),
+                                                    ingress_participant,
+                                                    filter_participant)
+
                     for egress_participant in egress_participants:
-                        self.update_forbidden_paths(msg["prefix"], None, msg["sdx_set"], msg["ingress_participant"], egress_participant)
 
                         ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
-                        ingress_participants = ingress_participants.intersection(filter_participants)
 
                         receiver_participant = self.get_first_sdx_participant_on_path(msg["prefix"], egress_participant)
-                        co_update, old_co_entry, new_co_entry = self.cib.update_out(egress_participant,
-                                                                                    msg["prefix"],
-                                                                                    receiver_participant,
-                                                                                    ingress_participants,
-                                                                                    self.config.id)
+                        if receiver_participant:
+                            co_update, old_co_entry, new_co_entry = self.cib.update_out(egress_participant,
+                                                                                        msg["prefix"],
+                                                                                        receiver_participant,
+                                                                                        ingress_participants,
+                                                                                        self.config.id)
 
-                        random_value = randint(0, self.config.loop_detector.max_random_value)
-                        timestamp = time()
+                            random_value = randint(0, self.config.loop_detector.max_random_value)
+                            timestamp = time()
 
-                        self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+                            self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
 
     def rib_update(self, updates):
         """
         Updates the CIB and notifies all neighbor SDXes after a change in the RIB
-        :param update:
+        :param updates:
         :return:None
         """
 
@@ -158,7 +167,11 @@ class LoopDetector(XCTRLModule):
             participants = self.rib.get_all_receiver_participants(update["prefix"], advertising_participant)
 
             for participant in participants:
-                self.update_forbidden_paths(update["prefix"], update["as_path"], None, participant, advertising_participant)
+                self.update_forbidden_paths(update["prefix"],
+                                            update["as_path"],
+                                            None,
+                                            participant,
+                                            advertising_participant)
 
             ingress_participants = self.policy_handler.get_ingress_participants(advertising_participant)
             filter_participants = self.rib.get_all_participants_advertising(update["prefix"])
@@ -166,17 +179,17 @@ class LoopDetector(XCTRLModule):
 
             if ingress_participants:
                 receiver_participant = self.get_first_sdx_participant_on_path(update["prefix"], advertising_participant)
-                co_update, old_co_entry, new_co_entry = self.cib.update_out(advertising_participant,
-                                                                            update["prefix"],
-                                                                            receiver_participant,
-                                                                            ingress_participants,
-                                                                            self.config.id)
+                if receiver_participant:
+                    co_update, old_co_entry, new_co_entry = self.cib.update_out(advertising_participant,
+                                                                                update["prefix"],
+                                                                                receiver_participant,
+                                                                                ingress_participants,
+                                                                                self.config.id)
 
+                    random_value = randint(0, self.config.loop_detector.max_random_value)
+                    timestamp = time()
 
-                random_value = randint(0, self.config.loop_detector.max_random_value)
-                timestamp = time()
-
-                self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+                    self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
 
     def is_policy_active(self, ingress_participant, egress_participant):
         """
@@ -203,16 +216,16 @@ class LoopDetector(XCTRLModule):
                 msg = self.msg_out_queue.get(True, 1)
 
             except Empty:
-                #self.logger.debug("Empty Queue")
+                # self.logger.debug("Empty Queue")
                 continue
 
-            print "Sending Correctness Message"
-            print str(msg)
-
-            # next_sdx = self.config.sdx_registry[msg[0]]
-            # conn = Client((next_sdx.address, next_sdx.port))
-            # conn.send(msg[1])
-            # conn.close()
+            if msg[0] in self.config.sdx_registry:
+                next_sdx = self.config.sdx_registry[msg[0]]
+                conn = Client((next_sdx.address, next_sdx.port))
+                conn.send(json.dumps(msg[1]))
+                conn.close()
+            else:
+                self.logger.debug("Error: SDX " + str(msg[0]) + " is not in the SDX registry")
 
     def notify_nh_sdx(self, update, old_cib_entry, new_cib_entry, timestamp, random_value):
         """
@@ -224,6 +237,7 @@ class LoopDetector(XCTRLModule):
         :param random_value:
         :return:None
         """
+
         old_sdxes = set()
         new_sdxes = set()
         if not old_cib_entry and not new_cib_entry:
@@ -233,6 +247,7 @@ class LoopDetector(XCTRLModule):
             withdraw_msg = {"type": "withdraw",
                             "prefix": old_cib_entry["prefix"],
                             "sender_sdx": self.config.id,
+                            "sdx_set": None,
                             "ingress_participant": old_cib_entry["receiver_participant"],
                             "timestamp": timestamp,
                             "random_value": random_value
@@ -247,6 +262,10 @@ class LoopDetector(XCTRLModule):
                             "timestamp": timestamp,
                             "random_value": random_value
                             }
+        if new_cib_entry and old_cib_entry:
+            old_sdxes = old_sdxes.difference(new_sdxes)
+            if not update:
+                new_sdxes = new_sdxes.difference(old_sdxes)
 
         for sdx in old_sdxes:
             self.msg_out_queue.put((sdx, withdraw_msg))
@@ -263,21 +282,26 @@ class LoopDetector(XCTRLModule):
         :param egress_participant:
         :return:None
         """
+
         if not as_path:
             as_path = self.rib.get_route(prefix, egress_participant)["as_path"]
-        as_path_sdxes = self.get_sdxes_on_path(as_path)
+        as_path_sdxes = self.get_sdxes_on_path([int(v) for v in as_path.split(" ")])
         if not sdx_set:
             cl_entry = self.cib.get_cl_entry(prefix, ingress_participant)
             if cl_entry:
-                sdx_set = cl_entry["sdx_set"]
+                sdx_set = set([int(v) for v in cl_entry["sdx_set"].split(";")])
             else:
                 sdx_set = set()
 
-        union = sdx_set.union(as_path_sdxes)
-        if len(union) > 0:
+        intersection = sdx_set.intersection(as_path_sdxes)
+
+        if len(intersection) > 0:
             self.forbidden_paths[ingress_participant][prefix].append(egress_participant)
         elif egress_participant in self.forbidden_paths[ingress_participant][prefix]:
             self.forbidden_paths[ingress_participant][prefix].remove(egress_participant)
+
+        self.logger.debug("update forbidden paths for " + str(ingress_participant) + " - " +
+                          str(prefix) + " results in " + str(self.forbidden_paths[ingress_participant][prefix]))
 
     def get_sdxes_on_path(self, as_path):
         """
@@ -297,6 +321,9 @@ class LoopDetector(XCTRLModule):
                 if len(union) > 0:
                     sdxes = sdxes.union(union)
             as2 = as1
+
+        sdxes = sdxes.difference(set([self.config.id]))
+
         return sdxes
 
     def get_first_sdx_participant_on_path(self, prefix, egress_participant):
