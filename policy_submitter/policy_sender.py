@@ -33,13 +33,14 @@ def send_policy(time_2_policy, address, port):
             if LOG:
                 print "Sending policy items at time ", ind
             policy_socket = Client((address, port))
-            data = {ind: time_2_policy[ind]}
+            data = time_2_policy[ind]
+            print str(data)
             policy_socket.send(json.dumps(data))
             recv = policy_socket.recv()
             if LOG:
                 print "response received: ", recv
             policy_socket.close()
-    time.sleep(1)
+        time.sleep(1)
 
 
 def parse_config(sdx_id):
@@ -67,8 +68,8 @@ if __name__ == '__main__':
 
     base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples",
                                              args.dir,))
-    config_file = os.path.join(base_path, "sdx_config", "sdx_global.cfg")
-    policy_file = os.path.join(base_path, "policies", str(args.sdxid) + ".cfg")
+    config_file = os.path.join(base_path, "config", "sdx_global.cfg")
+    policy_file = os.path.join(base_path, "policies", str(args.sdxid) + ".log")
 
     address, port = parse_config(args.sdxid)
     time_2_policy = parse_policy_log(policy_file)

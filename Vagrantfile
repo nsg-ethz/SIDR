@@ -23,4 +23,6 @@ Vagrant.configure("2") do |config|
 
   ## SSH config
   config.ssh.forward_x11 = true
+  
+  config.vm.synced_folder ".", "/home/vagrant/supercharged_sdx"
 end

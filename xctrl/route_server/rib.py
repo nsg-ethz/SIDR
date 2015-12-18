@@ -8,13 +8,13 @@ from threading import RLock as lock
 
 class rib():
     
-    def __init__(self,ip,name):
+    def __init__(self, asn, name):
         self.lock = lock()
         with self.lock:
             # Create a database in RAM
             base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"ribs"))
-            self.db = sqlite3.connect(base_path+'/'+ip+'.db',check_same_thread=False)
-            self.db.row_factory = sqlite3.Row
+            self.db = sqlite3.connect(base_path+'/'+str(asn)+'.db',check_same_thread=False)
+            self.db.row_factory = rib.dict_factory
             self.name = name
         
             # Get a cursor object
@@ -145,6 +145,13 @@ class rib():
         
         with self.lock:
             self.db.rollback()
+
+    @staticmethod
+    def dict_factory(cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
 
 ''' main '''     
 if __name__ == '__main__':

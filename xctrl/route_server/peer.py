@@ -108,7 +108,6 @@ class Peer():
                             self.rib["input"].commit()
                                     
                             route_list.append({'withdraw': deleted_route})
-                                    
         return route_list
     
     def process_notification(self,route):

@@ -5,35 +5,39 @@
 import json
 import Queue
 
-from server import Server
+#from server import Server
+from test_server import Server
 
 from decision_process import decision_process
 from bgp_interface import bgp_update_peers
-from xctrl.lib import XCTRLModule, XCTRLEvent
+from lib import XCTRLModule, XCTRLEvent
 from peer import Peer
 from rib_interface import RIBInterface
 
 
 class RouteServer(XCTRLModule):
-    def __init__(self, config, event_queue, debug):
+    def __init__(self, config, event_queue, debug, vmac_encoder):
         super(RouteServer, self).__init__(config, event_queue, debug)
         self.logger.info("Initialize the Route Server")
 
         self.config = config
         self.event_queue = event_queue
 
+        self.vmac_encoder = vmac_encoder
+
         # build rib for each participant
         self.rib = dict()
         for participant, attributes in self.config.participants.iteritems():
             self.rib[participant] = Peer(attributes.asn)
-        
-        self.server = Server(self.config.route_server.port, self.config.route_server.key)
+
+        self.server = Server(self.config.base_path, self.config.id)
+        # self.server = Server(self.config.route_server.port, self.config.route_server.key)
         self.run = False
 
         self.rib_interface = RIBInterface(self.config, self.rib)
         
     def start(self):
-        print "Start Server"
+        self.logger.debug("Start ExaBGP Interface")
         self.server.start()
 
         self.run = True
@@ -42,7 +46,7 @@ class RouteServer(XCTRLModule):
             try:
                 route = self.server.receiver_queue.get(True, 1)
 
-                self.logger.debug("Received Route: " + str(route))
+                self.logger.debug("Received Route")
                 
                 route = json.loads(route)
 
@@ -64,22 +68,25 @@ class RouteServer(XCTRLModule):
                     event = XCTRLEvent("RouteServer", "RIB UPDATE", updates)
                     self.event_queue.put(event)
 
+                    # TODO Has to be done after VNH Assignment
                     # BGP updates
-                    changes = bgp_update_peers(updates, self.config)
+                    # changes = bgp_update_peers(updates, self.config)
 
-                    event = XCTRLEvent("RouteServer", "RIB UPDATE", changes)
-                    self.event_queue.put(event)
+                    # event = XCTRLEvent("RouteServer", "RIB UPDATE", changes)
+                    # self.event_queue.put(event)
 
             except Queue.Empty:
-                self.logger.debug("Empty Queue")
+                #self.logger.debug("Empty Queue")
+                pass
 
     def stop(self):
         self.run = False
 
 
 class RouteServerConfig(object):
-    def __init__(self, ip, port, key, interface):
+    def __init__(self, ip, port, key, fabric_port, interface):
         self.ip = ip
         self.port = port
         self.key = key
+        self.fabric_port = fabric_port
         self.interface = interface

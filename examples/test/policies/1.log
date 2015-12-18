@@ -1,0 +1,31 @@
+[{
+	"time": 3,
+	"type": "outbound",
+	"participant": 1,
+	"match": {
+		"tcp_dst": 80
+	},
+	"action": {
+		"fwd": 3
+	}
+}, {
+	"time": 4,
+	"type": "inbound",
+	"participant": 3,
+	"match": {
+		"udp_dst": 22
+	},
+	"action": {
+		"fwd": 1
+	}
+}, {
+	"time": 30,
+	"type": "outbound",
+	"participant": 3,
+	"match": {
+		"tcp_dst": 443
+	},
+	"action": {
+		"fwd": 2
+	}
+}]

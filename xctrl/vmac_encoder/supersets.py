@@ -4,7 +4,7 @@
 
 import logging
 from collections import defaultdict
-from ..lib import XCTRLModule
+from lib import XCTRLModule
 
 
 from netaddr import IPNetwork

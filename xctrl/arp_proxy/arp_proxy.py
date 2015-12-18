@@ -8,7 +8,7 @@ import struct
 import binascii
 from threading import Thread
 
-from xctrl.lib import XCTRLModule
+from lib import XCTRLModule
 
 
 class ARPProxy(XCTRLModule):

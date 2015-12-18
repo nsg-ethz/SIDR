@@ -181,7 +181,7 @@ class GSSmT(GSS):
     def __init__(self, sender, config):
         super(GSSmT, self).__init__(sender, config)
         self.logger = logging.getLogger('GSSmT')
-        self.fm_builder = FlowModMsgBuilder(0)
+        self.fm_builder = FlowModMsgBuilder(0, )
 
     def start(self):
         self.logger.info('start')

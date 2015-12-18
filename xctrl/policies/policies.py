@@ -9,11 +9,10 @@ import logging
 from multiprocessing.connection import Listener
 from collections import defaultdict
 
-from flowmodsender import FlowModSender # REST API
-from gss import GSSmT
+from lib import XCTRLModule
 
 
-class PolicyHandler(object):
+class PolicyHandler(XCTRLModule):
     def __init__(self, config, event_queue, debug, supersets, loop_detector):
         super(PolicyHandler, self).__init__(config, event_queue, debug)
         self.logger = logging.getLogger('xctrl')
@@ -22,19 +21,15 @@ class PolicyHandler(object):
         self.supersets = supersets
         self.loop_detector = loop_detector
 
-        self.policies = defaultdict(dict)
+        self.policies = defaultdict(lambda: defaultdict(list))
 
-        self.client = FlowModSender(self.config.refmon["url"]) # REST API
-
-        self.controller = GSSmT(self.client, self.config)
-        self.logger.info('mode GSSmT - OF v1.3')
+        self.logger.info('init')
 
         self.run = False
         self.listener = None
 
     def start(self):
         self.logger.info('start')
-        self.controller.start()
 
         self.listener = Listener((self.config.policy_handler.address, self.config.policy_handler.port), authkey=None)
         self.run = True
@@ -42,21 +37,22 @@ class PolicyHandler(object):
             conn = self.listener.accept()
             tmp = conn.recv()
 
-            policy = json.loads(tmp)
+            policies = json.loads(tmp)
 
-            if policy["type"] == "outbound":
-                safe_to_install = self.loop_detector.activate_policy(policy["participant"], policy["action"]["fwd"])
-            else:
-                safe_to_install = True
+            i = 0
+            for policy in policies:
+                if policy["type"] == "outbound":
+                    safe_to_install = self.loop_detector.activate_policy(policy["participant"], policy["action"]["fwd"])
+                else:
+                    safe_to_install = True
 
-            if safe_to_install:
-                self.policies[policy["participant"]][policy["type"]] = Policy(policy["match"],
-                                                                              policy["action"],
-                                                                              policy["action"]["fwd"])
-                reply = "Policy Accepted"
-            else:
-                reply = "Policy Rejected"
+                if safe_to_install:
+                    self.policies[policy["participant"]][policy["type"]].append(Policy(policy["match"],
+                                                                                       policy["action"],
+                                                                                       policy["action"]["fwd"]))
+                    i += 1
 
+            reply = "Total Received Policies: " + str(len(policies)) + " Accepted Policies: " + str(i)
             conn.send(reply)
             conn.close()
 
@@ -85,8 +81,8 @@ class PolicyHandler(object):
 
 class PolicyHandlerConfig(object):
     def __init__(self, address, port):
-        self.address
-        self.port
+        self.address = address
+        self.port = port
 
 
 class Policy(object):

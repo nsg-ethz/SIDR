@@ -7,7 +7,8 @@ import argparse
 
 import logging
 from threading import Thread
-from lib import Config, XCTRLEvent
+from config import Config
+from lib import XCTRLEvent
 
 from multiprocessing import Queue
 from Queue import Empty
@@ -20,15 +21,15 @@ from policies.policies import PolicyHandler
 
 
 class XCTRL(object):
-    def __init__(self, base_path, config_file, debug):
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, sdx_id, base_path, config_file, debug):
+        self.logger = logging.getLogger("XCTRL")
         self.debug = debug
         if self.debug:
             self.logger.setLevel(logging.DEBUG)
         self.logger.info('init')
 
         # Parse Config
-        self.config = Config(base_path, config_file)
+        self.config = Config(sdx_id, base_path, config_file)
 
         # Event Queue
         self.event_queue = Queue()
@@ -41,7 +42,7 @@ class XCTRL(object):
     def start(self):
         # Start all modules
         # route server
-        self.modules["route_server"] = RouteServer(self.config, self.event_queue, self.debug)
+        self.modules["route_server"] = RouteServer(self.config, self.event_queue, self.debug, None)
 
         # loop detection - needs access to RIB
         self.modules["loop_detection"] = LoopDetector(self.config, self.event_queue, self.debug,
@@ -49,24 +50,26 @@ class XCTRL(object):
                                                       None)
 
         # VMAC encoder - needs access to RIB, CIB
-        self.modules["vmac_encoder"] = SuperSetEncoder(self.config, self.event_queue, self.debug,
-                                                       self.modules["route_server"].rib_interface,
-                                                       self.modules["loop_detection"].forbidden_paths)
+        self.modules["vmac_encoder"] = None
+        #self.modules["vmac_encoder"] = SuperSetEncoder(self.config, self.event_queue, self.debug,
+        #                                               self.modules["route_server"].rib_interface,
+        #                                               self.modules["loop_detection"].forbidden_paths)
 
         # policies - needs access to Correctness, VMAC encoder
         self.modules["policy_handler"] = PolicyHandler(self.config, self.event_queue, self.debug,
                                                        self.modules["vmac_encoder"],
-                                                       self.modules["loop_detection"].forbidden_paths)
+                                                       self.modules["loop_detection"])
         self.modules["loop_detection"].policy_handler = self.modules["policy_handler"]
 
         # arp proxy - needs access to VMAC encoder
-        self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.debug,
-                                             self.modules["vmac_encoder"])
+        #self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.debug,
+        #                                     self.modules["vmac_encoder"])
 
         for name, module in self.modules.iteritems():
-            self.threads[name] = Thread(target=self.modules[name].start)
-            self.threads[name].daemon = True
-            self.threads[name].start()
+            if self.modules[name]:
+                self.threads[name] = Thread(target=self.modules[name].start)
+                self.threads[name].daemon = True
+                self.threads[name].start()
 
         # Process all incoming events
         self.run = True
@@ -75,16 +78,16 @@ class XCTRL(object):
                 event = self.event_queue.get(True, 1)
 
             except Empty:
-                self.logger.debug('stop')
+                #self.logger.debug('Event Queue Empty')
                 continue
 
             if isinstance(event, XCTRLEvent):
-                if event.type == "UPDATE":
+                if event.type == "RIB UPDATE":
                     # update vnh assignment
-                    self.modules["vmac_encoder"].vnh_assignment(event.data)
+                    #self.modules["vmac_encoder"].vnh_assignment(event.data)
 
                     # update supersets
-                    self.modules["vmac_encoder"].update_supersets(event.data)
+                    #self.modules["vmac_encoder"].update_supersets(event.data)
 
                     self.modules["loop_detection"].rib_update(event.data)
 
@@ -101,20 +104,24 @@ class XCTRL(object):
 
         # Stop all Modules and Join all Threads
         for module in self.modules.values():
-            module.stop()
+            if module:
+                module.stop()
 
         for thread in self.threads.values():
             thread.join()
 
 
 def main(argv):
+    # logging - log level
+    logging.basicConfig(level=logging.INFO)
+
     # locate config file
     base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples",
-                                             argv.dir, "controller-"+args.controller))
-    config_file = os.path.join(base_path, "sdx_config", "sdx_global.cfg")
+                                             argv.dir))
+    config_file = os.path.join(base_path, "config", "sdx_global.cfg")
 
     # start route server
-    xctrl_instance = XCTRL(argv.sdxid, config_file, argv.debug)
+    xctrl_instance = XCTRL(int(argv.sdxid), base_path, config_file, argv.debug)
     xctrl_thread = Thread(target=xctrl_instance.start)
     xctrl_thread.start()
 

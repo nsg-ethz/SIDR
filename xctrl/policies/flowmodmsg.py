@@ -6,9 +6,8 @@ import json
 
 
 class FlowModMsgBuilder(object):
-    def __init__(self, participant, key):
+    def __init__(self, participant):
         self.participant = participant
-        self.key = key
         self.flow_mods = []
 
     def add_flow_mod(self, mod_type, rule_type, priority, match, action, cookie = None):
