@@ -25,22 +25,23 @@ def parse_policy_log(fname):
 
 
 def send_policy(time_2_policy, address, port):
-    max_time = max(time_2_policy.keys())
-    if LOG:
-        print "This script will run for ", max_time, " seconds"
-    for ind in range(1, max_time+1):
-        if ind in time_2_policy:
-            if LOG:
-                print "Sending policy items at time ", ind
-            policy_socket = Client((address, port))
-            data = time_2_policy[ind]
-            print str(data)
-            policy_socket.send(json.dumps(data))
-            recv = policy_socket.recv()
-            if LOG:
-                print "response received: ", recv
-            policy_socket.close()
-        time.sleep(1)
+    if time_2_policy:
+        max_time = max(time_2_policy.keys())
+        if LOG:
+            print "This script will run for ", max_time, " seconds"
+        for ind in range(1, max_time+1):
+            if ind in time_2_policy:
+                if LOG:
+                    print "Sending policy items at time ", ind
+                policy_socket = Client((address, port))
+                data = time_2_policy[ind]
+                print str(data)
+                policy_socket.send(json.dumps(data))
+                recv = policy_socket.recv()
+                if LOG:
+                    print "response received: ", recv
+                policy_socket.close()
+            time.sleep(1)
 
 
 def parse_config(sdx_id):

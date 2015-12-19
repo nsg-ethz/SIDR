@@ -75,6 +75,19 @@ class RIBInterface(object):
             participants.add(self.config.portip_2_participant[route["next_hop"]])
         return participants
 
+    def get_all_participants_using_best_path(self, prefix, egress_participant):
+        """
+        all participants that use egress_participant uses for a best path
+        :param ingress_participant:
+        :return: set of participants
+        """
+        participants = set()
+        for participant in self.config.participants:
+            route = self.rib[participant].get_route("local", prefix)
+            if route and egress_participant == self.config.portip_2_participant[route["next_hop"]]:
+                participants.add(participant)
+        return participants
+
     def get_route(self, prefix, from_participant, to_participant=None):
         """
         get route for prefix that from_participant advertised to to_participant

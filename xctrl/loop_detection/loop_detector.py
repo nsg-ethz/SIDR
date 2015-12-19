@@ -109,6 +109,9 @@ class LoopDetector(XCTRLModule):
                 # self.logger.debug("Empty Queue")
                 continue
 
+            self.logger.debug("Received Correctness Message from " + str(msg["sender_sdx"]) +
+                              " concerning " + str(msg["prefix"]))
+
             ingress_participant = self.config.asn_2_participant[msg["ingress_participant"]]
 
             ci_update, old_ci_entry, new_ci_entry = self.cib.update_in(msg["type"],
@@ -122,7 +125,11 @@ class LoopDetector(XCTRLModule):
 
                 if cl_update:
                     egress_participants = self.policy_handler.get_egress_participants(ingress_participant)
-                    egress_participants.union(self.rib.get_best_path_participants(ingress_participant))
+                    print "E:" + str(egress_participants)
+                    best_participants = self.rib.get_best_path_participants(ingress_participant)
+                    print "B:" + str(best_participants)
+                    egress_participants = egress_participants.union(best_participants)
+                    print "U:" + str(egress_participants)
                     filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
                     egress_participants = egress_participants.intersection(filter_participants)
 
@@ -134,17 +141,20 @@ class LoopDetector(XCTRLModule):
                                                     filter_participant)
 
                     for egress_participant in egress_participants:
-
+                        print "FOR E: " + str(egress_participant)
                         ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
+                        ingress_participants.update(self.rib.get_all_participants_using_best_path(msg["prefix"],
+                                                                                                  egress_participant))
 
                         receiver_participant = self.get_first_sdx_participant_on_path(msg["prefix"], egress_participant)
+                        print "RECEIVER:" + str(receiver_participant)
                         if receiver_participant:
                             co_update, old_co_entry, new_co_entry = self.cib.update_out(egress_participant,
                                                                                         msg["prefix"],
                                                                                         receiver_participant,
                                                                                         ingress_participants,
                                                                                         self.config.id)
-
+                            print "UPDATE"+str(co_update)
                             random_value = randint(0, self.config.loop_detector.max_random_value)
                             timestamp = time()
 
@@ -342,7 +352,9 @@ class LoopDetector(XCTRLModule):
             as_path = [int(n) for n in entry["as_path"].split(" ")]
             for as1 in as_path:
                 as1_sdxes = self.config.loop_detector.asn_2_sdx[as1]
+                print str(as1_sdxes)
                 as1_sdxes = as1_sdxes.difference(sdx_id)
+                print str(as1_sdxes)
                 if len(as1_sdxes) > 0:
                     return as1
         return None

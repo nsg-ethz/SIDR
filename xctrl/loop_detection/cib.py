@@ -130,13 +130,18 @@ class CIB(object):
             old_entry = cursor.fetchone()
 
             active_policy = True if ingress_participants else False
+            print "AP:" + str(active_policy)
+            print "IP:" + str(ingress_participants)
 
             new_entry = CIB.merge_cl_entries(egress_participant, prefix, sdx_id, cl_entries, receiver_participant, active_policy)
 
+            print "NE:" + str(new_entry)
+
             if new_entry:
-                if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
+                sdx_set = ";".join(str(v) for v in new_entry["sdx_set"])
+                if not old_entry or sdx_set != old_entry["sdx_set"]:
                     cursor.execute('INSERT OR REPLACE INTO output (e_participant, prefix, receiver_participant, sdx_set) '
-                                   'VALUES (?,?,?,?)', (egress_participant, prefix, receiver_participant, ";".join(str(v) for v in new_entry["sdx_set"])))
+                                   'VALUES (?,?,?,?)', (egress_participant, prefix, receiver_participant, sdx_set))
                     self.db.commit()
                     return True, old_entry, new_entry
             elif old_entry:

@@ -1,2 +1,2 @@
-{ "exabgp": "3.4.8", "type": "update", "neighbor": { "ip": "172.2.0.1", "address": { "local": "172.2.255.254", "peer": "172.2.0.1"}, "asn": { "local": "65000", "peer": "400"}, "message": { "update": { "attribute": { "origin": "igp", "as-path": [ 400 ], "confederation-path": [], "med": 0 }, "announce": { "ipv4 unicast": { "172.2.0.1": { "100.0.0.0/24": {  }} } } } }} }
-{ "exabgp": "3.4.8", "type": "update", "neighbor": { "ip": "172.2.0.2", "address": { "local": "172.2.255.254", "peer": "172.2.0.2"}, "asn": { "local": "65000", "peer": "500"}, "message": { "update": { "attribute": { "origin": "igp", "as-path": [ 500, 900, 700 ], "confederation-path": [], "med": 0 }, "announce": { "ipv4 unicast": { "172.2.0.2": { "100.0.0.0/24": {  } } } } } }} }
+1|announce|172.2.0.1|400|172.2.255.254|65000|400|100.0.0.0/24
+1|announce|172.2.0.2|500|172.2.255.254|65000|500,900,700|100.0.0.0/24
