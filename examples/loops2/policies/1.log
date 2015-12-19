@@ -1,0 +1,24 @@
+[
+    {
+        "time": 2,
+        "type": "outbound",
+        "participant": 3,
+        "match": {
+            "tcp_dst": 443
+        },
+        "action": {
+            "fwd": 2
+        }
+    },
+	{
+        "time": 4,
+        "type": "outbound",
+        "participant": 5,
+        "match": {
+            "tcp_dst": 443
+        },
+        "action": {
+            "fwd": 4
+        }
+    }
+]
