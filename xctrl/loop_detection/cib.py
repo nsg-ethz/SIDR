@@ -113,7 +113,7 @@ class CIB(object):
         merged_entry["sdx_set"].sort()
         return merged_entry
 
-    def update_out(self, egress_participant, prefix, receiver_participant, ingress_participants, sdx_id):
+    def update_out(self, egress_participant, prefix, receiver_participant, ingress_participants, sdx_id, policy):
         with self.lock:
             placeholders = ', '.join('?' for _ in ingress_participants)
             query = 'SELECT i_participant, prefix, sdx_set FROM local WHERE i_participant IN (%s) AND prefix = ?' \
@@ -129,20 +129,18 @@ class CIB(object):
                            (egress_participant, prefix))
             old_entry = cursor.fetchone()
 
-            active_policy = True if ingress_participants else False
-            print "AP:" + str(active_policy)
-            print "IP:" + str(ingress_participants)
-
-            new_entry = CIB.merge_cl_entries(egress_participant, prefix, sdx_id, cl_entries, receiver_participant, active_policy)
-
-            print "NE:" + str(new_entry)
+            new_entry = CIB.merge_cl_entries(egress_participant, prefix, sdx_id, cl_entries, receiver_participant, policy)
 
             if new_entry:
                 sdx_set = ";".join(str(v) for v in new_entry["sdx_set"])
-                if not old_entry or sdx_set != old_entry["sdx_set"]:
+                if not old_entry or sdx_set != old_entry["sdx_set"] or receiver_participant != old_entry["receiver_participant"]:
                     cursor.execute('INSERT OR REPLACE INTO output (e_participant, prefix, receiver_participant, sdx_set) '
                                    'VALUES (?,?,?,?)', (egress_participant, prefix, receiver_participant, sdx_set))
                     self.db.commit()
+                    if old_entry and receiver_participant != old_entry["receiver_participant"]:
+                        cursor.execute('DELETE FROM output WHERE e_participant = ? AND prefix = ? AND receiver_participant = ?',
+                                    (egress_participant, prefix, old_entry["receiver_participant"]))
+                        self.db.commit()
                     return True, old_entry, new_entry
             elif old_entry:
                 cursor.execute('DELETE FROM output WHERE e_participant = ? AND prefix = ?',

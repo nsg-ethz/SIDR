@@ -65,6 +65,8 @@ class LoopDetector(XCTRLModule):
         self.logger.debug("Received Activation Request from " + str(ingress_participant) +
                           " to " + str(egress_participant))
 
+        active_policies = True
+
         allowed_prefixes = list()
 
         prefixes = self.rib.get_all_prefixes_advertised(egress_participant, ingress_participant)
@@ -73,8 +75,12 @@ class LoopDetector(XCTRLModule):
                 allowed_prefixes.append(prefix)
 
                 ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
-                filter_participants = self.rib.get_all_participants_advertising(prefix)
+                ingress_participants.update(self.rib.get_all_participants_using_best_path(prefix,
+                                                                                          egress_participant))
+                filter_participants = self.rib.get_all_receiver_participants(prefix)
                 ingress_participants = ingress_participants.intersection(filter_participants)
+                filter_participants = self.rib.get_all_participants_advertising(prefix)
+                ingress_participants = ingress_participants.difference(filter_participants)
 
                 ingress_participants.add(ingress_participant)
                 receiver_participant = self.get_first_sdx_participant_on_path(prefix, egress_participant)
@@ -83,7 +89,8 @@ class LoopDetector(XCTRLModule):
                                                                                prefix,
                                                                                receiver_participant,
                                                                                ingress_participants,
-                                                                               self.config.id)
+                                                                               self.config.id,
+                                                                               active_policies)
 
                     random_value = randint(0, self.config.loop_detector.max_random_value)
                     timestamp = time()
@@ -125,11 +132,8 @@ class LoopDetector(XCTRLModule):
 
                 if cl_update:
                     egress_participants = self.policy_handler.get_egress_participants(ingress_participant)
-                    print "E:" + str(egress_participants)
                     best_participants = self.rib.get_best_path_participants(ingress_participant)
-                    print "B:" + str(best_participants)
                     egress_participants = egress_participants.union(best_participants)
-                    print "U:" + str(egress_participants)
                     filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
                     egress_participants = egress_participants.intersection(filter_participants)
 
@@ -141,20 +145,26 @@ class LoopDetector(XCTRLModule):
                                                     filter_participant)
 
                     for egress_participant in egress_participants:
-                        print "FOR E: " + str(egress_participant)
                         ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
+                        active_policies = True if ingress_participants else False
                         ingress_participants.update(self.rib.get_all_participants_using_best_path(msg["prefix"],
                                                                                                   egress_participant))
+                        filter_participants = self.rib.get_all_receiver_participants(msg["prefix"],
+                                                                                     egress_participant)
+                        ingress_participants = ingress_participants.intersection(filter_participants)
+                        filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
+                        ingress_participants = ingress_participants.difference(filter_participants)
 
                         receiver_participant = self.get_first_sdx_participant_on_path(msg["prefix"], egress_participant)
-                        print "RECEIVER:" + str(receiver_participant)
+
                         if receiver_participant:
                             co_update, old_co_entry, new_co_entry = self.cib.update_out(egress_participant,
                                                                                         msg["prefix"],
                                                                                         receiver_participant,
                                                                                         ingress_participants,
-                                                                                        self.config.id)
-                            print "UPDATE"+str(co_update)
+                                                                                        self.config.id,
+                                                                                        active_policies)
+
                             random_value = randint(0, self.config.loop_detector.max_random_value)
                             timestamp = time()
 
@@ -184,8 +194,15 @@ class LoopDetector(XCTRLModule):
                                             advertising_participant)
 
             ingress_participants = self.policy_handler.get_ingress_participants(advertising_participant)
-            filter_participants = self.rib.get_all_participants_advertising(update["prefix"])
+            active_policies = True if ingress_participants else False
+            ingress_participants.update(self.rib.get_all_participants_using_best_path(update["prefix"],
+                                                                                      advertising_participant))
+
+            filter_participants = self.rib.get_all_receiver_participants(update["prefix"], advertising_participant)
+
             ingress_participants = ingress_participants.intersection(filter_participants)
+            filter_participants = self.rib.get_all_participants_advertising(update["prefix"])
+            ingress_participants = ingress_participants.difference(filter_participants)
 
             if ingress_participants:
                 receiver_participant = self.get_first_sdx_participant_on_path(update["prefix"], advertising_participant)
@@ -194,8 +211,8 @@ class LoopDetector(XCTRLModule):
                                                                                 update["prefix"],
                                                                                 receiver_participant,
                                                                                 ingress_participants,
-                                                                                self.config.id)
-
+                                                                                self.config.id,
+                                                                                active_policies)
                     random_value = randint(0, self.config.loop_detector.max_random_value)
                     timestamp = time()
 
@@ -253,16 +270,18 @@ class LoopDetector(XCTRLModule):
         if not old_cib_entry and not new_cib_entry:
             return
         if old_cib_entry:
+            # TODO add smarter way to find all SDXes, instead of only first ASN also have second
             old_sdxes = self.config.loop_detector.asn_2_sdx[old_cib_entry["receiver_participant"]]
             withdraw_msg = {"type": "withdraw",
                             "prefix": old_cib_entry["prefix"],
                             "sender_sdx": self.config.id,
-                            "sdx_set": None,
+                            "sdx_set": [],
                             "ingress_participant": old_cib_entry["receiver_participant"],
                             "timestamp": timestamp,
                             "random_value": random_value
                             }
         if new_cib_entry:
+            # TODO add smarter way to find all SDXes, instead of only first ASN also have second
             new_sdxes = self.config.loop_detector.asn_2_sdx[new_cib_entry["receiver_participant"]]
             announce_msg = {"type": "announce",
                             "prefix": new_cib_entry["prefix"],
@@ -352,9 +371,7 @@ class LoopDetector(XCTRLModule):
             as_path = [int(n) for n in entry["as_path"].split(" ")]
             for as1 in as_path:
                 as1_sdxes = self.config.loop_detector.asn_2_sdx[as1]
-                print str(as1_sdxes)
                 as1_sdxes = as1_sdxes.difference(sdx_id)
-                print str(as1_sdxes)
                 if len(as1_sdxes) > 0:
                     return as1
         return None
