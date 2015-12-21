@@ -59,8 +59,7 @@ class Server(object):
                 else:
                     msg["neighbor"]["message"]["update"]["withdraw"] = dict()
                     msg["neighbor"]["message"]["update"]["withdraw"]["ipv4 unicast"] = dict()
-                    msg["neighbor"]["message"]["update"]["withdraw"]["ipv4 unicast"][items[2]] = dict()
-                    msg["neighbor"]["message"]["update"]["withdraw"]["ipv4 unicast"][items[2]][items[7]] = dict()
+                    msg["neighbor"]["message"]["update"]["withdraw"]["ipv4 unicast"][items[7]] = dict()
                 routes[k].append(msg)
         return routes
 

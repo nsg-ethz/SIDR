@@ -149,6 +149,21 @@ class CIB(object):
                 return True, old_entry, None
             return False, None, None
 
+    def delete_out_entry(self, egress_participant, prefix):
+        cursor = self.db.cursor()
+        cursor.execute('SELECT e_participant, prefix, receiver_participant, sdx_set FROM output '
+                           'WHERE e_participant = ? AND prefix = ?',
+                           (egress_participant, prefix))
+        old_entry = cursor.fetchone()
+
+        if old_entry:
+            cursor.execute('DELETE FROM output WHERE e_participant = ? AND prefix = ?',
+                                (egress_participant, prefix))
+            self.db.commit()
+            return True, old_entry, None
+        return False, None, None
+
+
     @staticmethod
     def merge_cl_entries(egress_participant, prefix, sdx_id, cl_entries, receiver_participant, policy):
         if not policy and not cl_entries:

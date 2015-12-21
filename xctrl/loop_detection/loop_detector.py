@@ -182,9 +182,15 @@ class LoopDetector(XCTRLModule):
         for tmp_update in updates:
             if 'announce' in tmp_update:
                 update = tmp_update["announce"]
+            elif 'withdraw' in tmp_update:
+                update = tmp_update["withdraw"]
+                update["as_path"] = None
+            else:
+                self.logger.debug("Got invalid update from route server")
+                return
 
             advertising_participant = self.config.portip_2_participant[update["next_hop"]]
-            participants = self.rib.get_all_receiver_participants(update["prefix"], advertising_participant)
+            participants = self.config.participants[advertising_participant].peers_in
 
             for participant in participants:
                 self.update_forbidden_paths(update["prefix"],
@@ -193,30 +199,42 @@ class LoopDetector(XCTRLModule):
                                             participant,
                                             advertising_participant)
 
-            ingress_participants = self.policy_handler.get_ingress_participants(advertising_participant)
-            active_policies = True if ingress_participants else False
-            ingress_participants.update(self.rib.get_all_participants_using_best_path(update["prefix"],
-                                                                                      advertising_participant))
 
-            filter_participants = self.rib.get_all_receiver_participants(update["prefix"], advertising_participant)
+            if 'announce' in tmp_update:
+                ingress_participants = self.policy_handler.get_ingress_participants(advertising_participant)
+                active_policies = True if ingress_participants else False
+                ingress_participants.update(self.rib.get_all_participants_using_best_path(update["prefix"],
+                                                                                          advertising_participant))
 
-            ingress_participants = ingress_participants.intersection(filter_participants)
-            filter_participants = self.rib.get_all_participants_advertising(update["prefix"])
-            ingress_participants = ingress_participants.difference(filter_participants)
+                filter_participants = self.rib.get_all_receiver_participants(update["prefix"], advertising_participant)
 
-            if ingress_participants:
-                receiver_participant = self.get_first_sdx_participant_on_path(update["prefix"], advertising_participant)
-                if receiver_participant:
-                    co_update, old_co_entry, new_co_entry = self.cib.update_out(advertising_participant,
-                                                                                update["prefix"],
-                                                                                receiver_participant,
-                                                                                ingress_participants,
-                                                                                self.config.id,
-                                                                                active_policies)
-                    random_value = randint(0, self.config.loop_detector.max_random_value)
-                    timestamp = time()
+                ingress_participants = ingress_participants.intersection(filter_participants)
+                filter_participants = self.rib.get_all_participants_advertising(update["prefix"])
+                ingress_participants = ingress_participants.difference(filter_participants)
 
-                    self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+                if ingress_participants:
+                    receiver_participant = self.get_first_sdx_participant_on_path(update["prefix"], advertising_participant)
+
+                    if receiver_participant:
+                        co_update, old_co_entry, new_co_entry = self.cib.update_out(advertising_participant,
+                                                                                    update["prefix"],
+                                                                                    receiver_participant,
+                                                                                    ingress_participants,
+                                                                                    self.config.id,
+                                                                                    active_policies)
+                        random_value = randint(0, self.config.loop_detector.max_random_value)
+                        timestamp = time()
+
+                        self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+            else:
+                co_update, old_co_entry, new_co_entry = self.cib.delete_out_entry(advertising_participant,
+                                                                            update["prefix"])
+                random_value = randint(0, self.config.loop_detector.max_random_value)
+                timestamp = time()
+
+                self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+
+            self.logger.debug("Done processing RIB Update")
 
     def is_policy_active(self, ingress_participant, egress_participant):
         """
@@ -313,7 +331,15 @@ class LoopDetector(XCTRLModule):
         """
 
         if not as_path:
-            as_path = self.rib.get_route(prefix, egress_participant)["as_path"]
+            route = self.rib.get_route(prefix, egress_participant)
+            if route:
+                as_path = route["as_path"]
+            else:
+                if egress_participant in self.forbidden_paths[ingress_participant][prefix]:
+                    self.forbidden_paths[ingress_participant][prefix].remove(egress_participant)
+                self.logger.debug("update forbidden paths for " + str(ingress_participant) + " - " + str(prefix) +
+                                  " results in " + str(self.forbidden_paths[ingress_participant][prefix]))
+                return
         as_path_sdxes = self.get_sdxes_on_path([int(v) for v in as_path.split(" ")])
         if not sdx_set:
             cl_entry = self.cib.get_cl_entry(prefix, ingress_participant)
