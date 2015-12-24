@@ -41,7 +41,7 @@ def main(argv):
                     for i in range(0, len(path)):
                         path[i] = int(path[i])
                     out_participant = path[0]
-                    sdx_participants[in_participant]["all"][out_participant] = (destination, path)
+                    sdx_participants[in_participant]["all"][out_participant][destination] = path
 
                 sdx_participants[in_participant]["best"][destination] = paths[0]
 
@@ -52,7 +52,7 @@ def main(argv):
         filter = set(participants)
         for participant in participants:
             out_participants = set(sdx_participants[participant]["all"].keys())
-            sdx_structure[sdx_id][participant]["out_participant"] = out_participants.intersection(filter)
+            sdx_structure[sdx_id][participant]["out_participants"] = out_participants.intersection(filter)
             sdx_structure[sdx_id][participant]["policies"] = list()
 
     # write to a file

@@ -48,7 +48,7 @@ class PolicyGenerator(object):
                         if i >= len(fwds)/self.fraction:
                             break
                         op = self.get_match()
-                        output.write(str(sdx_id) + "|" + str(in_participant) + "|" + str(fwd) + "|" + str(op) + "\n")
+                        output.write(str(sdx_id) + "|" + str(in_participant) + "|" + str(fwd) + "|" + json.dumps(op) + "\n")
 
     def get_match(self):
         # pick protocol
