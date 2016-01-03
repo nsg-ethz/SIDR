@@ -27,7 +27,7 @@ class PolicyGenerator(object):
 
         self.port_counts = defaultdict(dict)
         self.port_counts["udp"]["src"] = sum(self.ports["UDP"]["src"].itervalues())
-        self.port_counts["udp"]["src"] = sum(self.ports["UDP"]["dst"].itervalues())
+        self.port_counts["udp"]["dst"] = sum(self.ports["UDP"]["dst"].itervalues())
         self.port_counts["udp"]["total"] = sum(self.port_counts["udp"].itervalues())
 
         self.port_counts["tcp"]["src"] = sum(self.ports["TCP"]["src"].itervalues())
@@ -45,10 +45,18 @@ class PolicyGenerator(object):
 
                     for fwd in fwds:
                         # stop if we have a policy for half of the eyeballs
-                        if i >= len(fwds)/int(self.fraction):
+                        if i >= len(fwds)/self.fraction:
                             break
-                        op = self.get_match()
-                        output.write(str(sdx_id) + "|" + str(in_participant) + "|" + str(fwd) + "|" + json.dumps(op) + "\n")
+
+                        # install between 1 and 4 policies per participant and fwd
+                        x = random.randrange(1, 5)
+                        for _ in range(0, x):
+                            op = self.get_match()
+                            output.write(str(sdx_id) + "|" +
+                                         str(in_participant) + "|" +
+                                         str(fwd) + "|" +
+                                         json.dumps(op) + "\n")
+                        i += 1
 
     def get_match(self):
         # pick protocol
@@ -95,7 +103,7 @@ def main(argv):
     with open(argv.sdx, 'r') as sdx_input:
         sdx_structure = pickle.load(sdx_input)[0]
 
-    PolicyGenerator(sdx_structure, argv.fraction, argv.output, argv.ports)
+    PolicyGenerator(sdx_structure, int(argv.fraction), argv.output, argv.ports)
 
 
 ''' main '''

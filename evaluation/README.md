@@ -8,9 +8,10 @@ $ python sdx_dataset.py test/routes.txt test/ixp_file.json test/sdx_dataset.log
 
 Build Policies
 ```bash
-$ python policy_generator.py <sdx dataset file> <ports file> <sdx policy output file>
+$ python policy_generator.py <sdx dataset file> <ports file> <X> <sdx policy output file>
 $ python policy_generator.py test/sdx_dataset.log test/port_distribution.log 1 test/policies.log
 ```
+for each participant, between 1 and 4 policies are created for 1/X of the outgoing participants
 
 Evaluate Policies
 ```bash
