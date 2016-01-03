@@ -122,7 +122,7 @@ class Evaluator(object):
 
     def install_policy_our_scheme(self, sdx_id, from_participant, to_participant, match):
         """
-        Checks whether a policy can safely be installed in case limited information exchange (forwarding sets)
+        Checks whether a policy can safely be installed in case of limited information exchange (forwarding sets)
         :param sdx_id: identifier of SDX at which policy is installed
         :param from_participant: AS Number of the participant that wants to install the policy
         :param to_participant: AS Number of the participant to which the policy forwards
@@ -193,6 +193,14 @@ class Evaluator(object):
         return True
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
+        """
+        Checks whether a policy can safely be installed in case of full knowledge
+        :param sdx_id: identifier of SDX at which policy is installed
+        :param from_participant: AS Number of the participant that wants to install the policy
+        :param to_participant: AS Number of the participant to which the policy forwards
+        :param match: policy match
+        :return: number of total policies and number of actually installed policies
+        """
         j = 0
 
         # check for each destination/prefix whether the policy is safe
