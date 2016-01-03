@@ -37,23 +37,23 @@ class PolicyGenerator(object):
         # generate_policies
         with open(output_file, 'w') as output:
             for sdx_id in sdx_structure:
-                for in_participant, out_participants in sdx_structure[sdx_id]:
-                    fwds = list(out_participants.keys())
+                for in_participant, data in sdx_structure[sdx_id].iteritems():
+                    fwds = list(data["out_participants"])
                     shuffle(fwds)
 
                     i = 0
 
                     for fwd in fwds:
                         # stop if we have a policy for half of the eyeballs
-                        if i >= len(fwds)/self.fraction:
+                        if i >= len(fwds)/int(self.fraction):
                             break
                         op = self.get_match()
                         output.write(str(sdx_id) + "|" + str(in_participant) + "|" + str(fwd) + "|" + json.dumps(op) + "\n")
 
     def get_match(self):
         # pick protocol
-        proto_pick = random.uniform(0, self.port_counts["udp"]["totals"] + self.port_counts["tcp"]["totals"])
-        if proto_pick <= self.port_counts["udp"]["totals"]:
+        proto_pick = random.uniform(0, self.port_counts["udp"]["total"] + self.port_counts["tcp"]["total"])
+        if proto_pick <= self.port_counts["udp"]["total"]:
             proto = 'udp'
         else:
             proto = 'tcp'
@@ -88,11 +88,12 @@ class PolicyGenerator(object):
         for k, w in port_stats.iteritems():
             s += w
             if r < s:
-                return k
-        return k
+                return int(k)
+        return int(k)
 
 def main(argv):
-    sdx_structure = pickle.load(argv.sdx)[0]
+    with open(argv.sdx, 'r') as sdx_input:
+        sdx_structure = pickle.load(sdx_input)[0]
 
     PolicyGenerator(sdx_structure, argv.fraction, argv.output, argv.ports)
 
