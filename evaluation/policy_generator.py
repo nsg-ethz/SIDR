@@ -5,6 +5,7 @@
 import random
 import json
 import argparse
+import time
 
 import cPickle as pickle
 
@@ -18,6 +19,9 @@ class PolicyGenerator(object):
         self.output_file = output_file
         self.ports_file = ports_file
         self.fraction = fraction
+
+        print "Generate Policies"
+        tmp_start = time.clock()
 
         # parse ports file
         self.ports = {}
@@ -33,6 +37,8 @@ class PolicyGenerator(object):
         self.port_counts["tcp"]["src"] = sum(self.ports["TCP"]["src"].itervalues())
         self.port_counts["tcp"]["dst"] = sum(self.ports["TCP"]["dst"].itervalues())
         self.port_counts["tcp"]["total"] = sum(self.port_counts["tcp"].itervalues())
+
+        print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
 
         # generate_policies
         with open(output_file, 'w') as output:
@@ -99,11 +105,22 @@ class PolicyGenerator(object):
                 return int(k)
         return int(k)
 
+
 def main(argv):
+    print "Read sdx_participants and sdx_structure from file"
+    start = time.clock()
+
     with open(argv.sdx, 'r') as sdx_input:
         sdx_structure = pickle.load(sdx_input)[0]
 
+    print "--> Execution Time: " + str(time.clock() - start) + "s\n"
+    print "Generate Policies"
+    tmp_start = time.clock()
+
     PolicyGenerator(sdx_structure, int(argv.fraction), argv.output, argv.ports)
+
+    print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
+    print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
 
 
 ''' main '''

@@ -4,6 +4,7 @@
 
 import argparse
 import json
+import time
 
 import cPickle as pickle
 
@@ -11,6 +12,10 @@ from collections import defaultdict
 
 
 def main(argv):
+
+    print "Read IXP File"
+    start = time.clock()
+
     ixps_2_participants = defaultdict(list)
     participants_2_ixps = defaultdict(list)
 
@@ -27,6 +32,10 @@ def main(argv):
                 for y in v:
                     if isinstance(y, int) or y.isdigit():
                         participants_2_ixps[int(k)].append(int(y))
+
+    print "--> Execution Time: " + str(time.clock() - start) + "s\n"
+    print "Build sdx_participants"
+    tmp_start = time.clock()
 
     sdx_structure = dict()
     sdx_participants = dict()
@@ -62,6 +71,10 @@ def main(argv):
     for participant in sdx_participants.keys():
         sdx_participants[participant]["ixps"] = participants_2_ixps[participant]
 
+    print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
+    print "Build sdx_structure"
+    tmp_start = time.clock()
+
     for sdx_id, participants in ixps_2_participants.iteritems():
         if sdx_id not in sdx_structure:
             sdx_structure[sdx_id] = dict()
@@ -76,12 +89,18 @@ def main(argv):
             sdx_structure[sdx_id][participant]["out_participants"] = out_participants.intersection(filter)
             sdx_structure[sdx_id][participant]["policies"] = defaultdict(list)
 
+    print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
+    print "Write sdx_participants and sdx_structure to a file"
+    tmp_start = time.clock()
+
     # write to a file
     data = (sdx_structure, sdx_participants)
 
     with open(argv.output, 'w') as output:
         data_string = pickle.dump(data, output)
 
+    print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
+    print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
 
 ''' main '''
 if __name__ == '__main__':

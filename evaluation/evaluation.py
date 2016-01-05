@@ -6,6 +6,7 @@ import argparse
 import logging
 import pickle
 import json
+import time
 
 from collections import namedtuple
 
@@ -310,8 +311,19 @@ def main(argv):
     # logging - log level
     logging.basicConfig(level=logging.INFO)
 
+    print "Init Evaluator"
+    start = time.clock()
+
     evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, True)
+
+    print "--> Execution Time: " + str(time.clock() - start) + "s\n"
+    print "Evaluate Policies"
+    tmp_start = time.clock()
+
     total_policies, installed_policies = evaluator.run_evaluation()
+
+    print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
+    print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
 
 
 ''' main '''
