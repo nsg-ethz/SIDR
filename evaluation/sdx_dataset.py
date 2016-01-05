@@ -11,16 +11,22 @@ from collections import defaultdict
 
 
 def main(argv):
-    ixps_2_participants = dict()
-    participants_2_ixps = dict()
+    ixps_2_participants = defaultdict(list)
+    participants_2_ixps = defaultdict(list)
 
     with open(argv.ixps) as infile:
         data = json.loads(infile.read())
         for k, v in data['ixp_2_asn'].iteritems():
-            ixps_2_participants[int(k)] = [int(y) for y in v]
+            if isinstance(k, int) or k.isdigit():
+                for y in v:
+                    if isinstance(y, int) or y.isdigit():
+                        ixps_2_participants[int(k)].append(int(y))
 
         for k, v in data['asn_2_ixp'].iteritems():
-            participants_2_ixps[int(k)] = [int(y) for y in v]
+            if isinstance(k, int) or k.isdigit():
+                for y in v:
+                    if isinstance(y, int) or y.isdigit():
+                        participants_2_ixps[int(k)].append(int(y))
 
     sdx_structure = dict()
     sdx_participants = dict()
@@ -36,6 +42,8 @@ def main(argv):
                 if in_participant not in sdx_participants:
                     sdx_participants[in_participant] = {"all": dict(), "best": dict()}
                 destination = int(x[1])
+                if x[2] == "":
+                    continue
                 tmp_paths = x[2].split(";")
                 paths = [p.split(",") for p in tmp_paths]
 
@@ -59,6 +67,9 @@ def main(argv):
             sdx_structure[sdx_id] = dict()
         filter = set(participants)
         for participant in participants:
+            if participant not in sdx_participants:
+                print "there are no paths to AS " + str(participant)
+                continue
             if participant not in sdx_structure[sdx_id]:
                 sdx_structure[sdx_id][participant] = dict()
             out_participants = set(sdx_participants[participant]["all"].keys())

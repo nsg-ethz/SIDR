@@ -114,10 +114,10 @@ class Evaluator(object):
                 self.sdx_structure[sdx_id][from_participant]["policies"][to_participant] = match
 
                 self.logger.debug("accepted " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
+                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination)) + " with path " + str(path) + " and sdxes " + str(sdxes)
             else:
                 self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
+                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination)) + " with path " + str(path) + " and sdxes " + str(sdxes)
         return i, j
 
     def install_policy_our_scheme(self, sdx_id, from_participant, to_participant, match):
