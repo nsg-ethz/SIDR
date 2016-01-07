@@ -57,6 +57,8 @@ class Evaluator(object):
         total_policies = 0
         installed_policies = 0
 
+        i = 0
+
         with open(self.policy_file, 'r') as policies:
             for policy in policies:
                 x = policy.split("\n")[0].split("|")
@@ -84,7 +86,12 @@ class Evaluator(object):
                 total_policies += tmp_total
                 installed_policies += tmp_installed
 
-        self.logger.info("Tried to install a total of " + str(total_policies) + ", managed to safely install " +
+                i += 1
+                if i%1000 == 0:
+                    self.logger.info("Tried install a total of " + str(total_policies) + ", managed to safely install " +
+                                     str(installed_policies))
+
+        self.logger.info("Final Result: Tried to install a total of " + str(total_policies) + ", managed to safely install " +
                          str(installed_policies))
         return total_policies, installed_policies
 
@@ -115,10 +122,10 @@ class Evaluator(object):
                 self.sdx_structure[sdx_id][from_participant]["policies"][to_participant] = match
 
                 self.logger.debug("accepted " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination)) + " with path " + str(path) + " and sdxes " + str(sdxes)
+                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination) + " with path " + str(path) + " and sdxes " + str(sdxes))
             else:
                 self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination)) + " with path " + str(path) + " and sdxes " + str(sdxes)
+                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination) + " with path " + str(path) + " and sdxes " + str(sdxes))
         return i, j
 
     def install_policy_our_scheme(self, sdx_id, from_participant, to_participant, match):
@@ -314,7 +321,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, True)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
