@@ -87,12 +87,10 @@ class Evaluator(object):
                 installed_policies += tmp_installed
 
                 i += 1
-                if i%1000 == 0:
-                    self.logger.info("Tried install a total of " + str(total_policies) + ", managed to safely install " +
-                                     str(installed_policies))
+                if i % 1000 == 0:
+                    self.logger.info("Tried install a total of " + str(total_policies) +
+                                     ", managed to safely install " + str(installed_policies))
 
-        self.logger.info("Final Result: Tried to install a total of " + str(total_policies) + ", managed to safely install " +
-                         str(installed_policies))
         return total_policies, installed_policies
 
     def install_policy_no_bgp(self, sdx_id, from_participant, to_participant, match):
@@ -107,9 +105,6 @@ class Evaluator(object):
 
         # get all paths that to_participant advertised to from_participant
         paths = self.sdx_participants[from_participant]["all"][to_participant]
-
-        i = 0
-        j = 0
 
         # check for each destination/prefix separately whether the policy is safe
         i = len(paths) - 1 + paths['other']
@@ -286,6 +281,9 @@ def main(argv):
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
+
+    print "Final Result: Tried to install a total of " + str(total_policies) + ", managed to safely install " + \
+          str(installed_policies)
 
 
 ''' main '''
