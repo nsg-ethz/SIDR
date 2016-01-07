@@ -112,20 +112,12 @@ class Evaluator(object):
         j = 0
 
         # check for each destination/prefix separately whether the policy is safe
-        for destination, path in paths.iteritems():
-            i += 1
+        i = len(paths) - 1 + paths['other']
+        j = paths['other']
 
-            # check if there is an sdx on the path to the destination. if there is none, the policy can be installed
-            sdxes = self.get_sdxes_on_path(path)
-            if len(sdxes) == 0:
-                j += 1
-                self.sdx_structure[sdx_id][from_participant]["policies"][to_participant] = match
+        if j > 0:
+            self.sdx_structure[sdx_id][from_participant]["policies"][to_participant] = match
 
-                self.logger.debug("accepted " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination) + " with path " + str(path) + " and sdxes " + str(sdxes))
-            else:
-                self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination) + " with path " + str(path) + " and sdxes " + str(sdxes))
         return i, j
 
     def install_policy_our_scheme(self, sdx_id, from_participant, to_participant, match):
@@ -138,33 +130,36 @@ class Evaluator(object):
         :return: number of total policies and number of actually installed policies
         """
 
-        j = 0
-
         # check for each destination/prefix separately whether the policy is safe
-        destinations = self.sdx_participants[from_participant]["all"][to_participant]
-        for destination, path in destinations.iteritems():
-            # init queue - with all first SDXes on the path
-            dfs_queue = list()
-            sdxes, in_participant = self.get_first_sdxes_on_path(path)
-            if sdxes:
-                if sdx_id in sdxes:
-                    # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
-                    self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                      str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
-                    continue
-                for sdx in sdxes:
-                    dfs_queue.append(self.dfs_node(sdx, in_participant, destination, None))
+        paths = self.sdx_participants[from_participant]["all"][to_participant]
+        i = len(paths) - 1 + paths['other']
+        j = paths['other']
 
+        for destination, sdx_info in paths.iteritems():
+            if destination == "other":
+                continue
+
+            # init queue
+            dfs_queue = list()
+
+            if sdx_id in sdx_info[1]:
+                # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
+                continue
+
+            # add all next hop sdxes to the queue
+            for sdx in sdx_info[1]:
+                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None))
+
+            # start the traversal of the sdx graph for each next hop sdx
             if self.traversal_our_scheme(sdx_id, destination, dfs_queue):
                 j += 1
-                self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
-
-                self.logger.debug("accepted " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
             else:
                 self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
                                   str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
-        return len(destinations), j
+
+        if j > 0:
+            self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
+        return i, j
 
     def traversal_our_scheme(self, sdx_id, destination, dfs_queue):
         # start traversal of SDX graph
@@ -174,30 +169,33 @@ class Evaluator(object):
             # get all outgoing paths for the in_participant
             out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"].keys()
 
+            check = list()
+
             # check if best path goes through that SDX and if so, consider it as well
-            best_path = self.sdx_participants[n.in_participant]["best"][n.destination]
-            if best_path[0] in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
-                sdxes, in_participant = self.get_first_sdxes_on_path(best_path)
-                if sdxes:
+            if n.destination in self.sdx_participants[n.in_participant]["best"]:
+                out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
+                if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
                     # check if the intial sdx is on the path, if so, a loop is created
-                    if sdx_id in sdxes:
+                    if sdx_id in sdx_info[1]:
                         return False
-                    for sdx in sdxes:
-                        dfs_queue.append(self.dfs_node(sdx, in_participant, destination, None))
+                    for sdx in sdx_info[1]:
+                        dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None))
+                        check.append((sdx_info[0], sdx))
 
             # check all policy activated paths
             for participant in out_participants:
                 # only check it, if it is not the best path
-                if participant != best_path[0]:
-                    if destination in self.sdx_participants[n.in_participant]["all"][participant]:
-                        path = self.sdx_participants[n.in_participant]["all"][participant][destination]
-                        sdxes, in_participant = self.get_first_sdxes_on_path(path)
-                        if sdxes:
-                            # check if the intial sdx is on the path, if so, a loop is created
-                            if sdx_id in sdxes:
-                                return False
-                            for sdx in sdxes:
-                                dfs_queue.append(self.dfs_node(sdx, in_participant, destination, None))
+                if destination in self.sdx_participants[n.in_participant]["all"][participant]:
+                    sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
+                    # check if the intial sdx is on the path, if so, a loop is created
+                    if sdx_id in sdx_info[1]:
+                        return False
+                    for sdx in sdx_info[1]:
+                        if (sdx_info[0], sdx) in check:
+                            continue
+                        else:
+                            check.append((sdx_info[0], sdx))
+                            dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None))
         return True
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
@@ -209,109 +207,72 @@ class Evaluator(object):
         :param match: policy match
         :return: number of total policies and number of actually installed policies
         """
-        j = 0
 
-        # check for each destination/prefix whether the policy is safe
-        destinations = self.sdx_participants[from_participant]["all"][to_participant]
-        for destination, path in destinations.iteritems():
+        # check for each destination/prefix separately whether the policy is safe
+        paths = self.sdx_participants[from_participant]["all"][to_participant]
+        i = len(paths) - 1 + paths['other']
+        j = paths['other']
+
+        for destination, sdx_info in paths.iteritems():
+            if destination == "other":
+                continue
+
             # init queue
             dfs_queue = list()
-            sdxes, in_participant = self.get_first_sdxes_on_path(path)
-            if sdxes:
-                if sdx_id in sdxes:
-                    self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                      str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
-                    continue
-                for sdx in sdxes:
-                    dfs_queue.append(self.dfs_node(sdx, in_participant, destination, match))
 
+            if sdx_id in sdx_info[1]:
+                # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
+                continue
+
+            # add all next hop sdxes to the queue
+            for sdx in sdx_info[1]:
+                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, match))
+
+            # start the traversal of the sdx graph for each next hop sdx
             if self.traversal_full_knowledge(sdx_id, destination, dfs_queue):
                 j += 1
-                self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
-
-                self.logger.debug("accepted " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
             else:
                 self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
                                   str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
 
-        return len(destinations), j
+        if j > 0:
+            self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
+
+        return i, j
 
     def traversal_full_knowledge(self, sdx_id, destination, dfs_queue):
         # start traversal
+
         while dfs_queue:
             n = dfs_queue.pop()
 
-            # get all outgoing paths
+            # get all outgoing paths for the in_participant
             out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"].keys()
-            best_path = self.sdx_participants[n.in_participant]["best"][n.destination]
 
-            # check if best path goes through that SDX and if so add it
-            if best_path[0] in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
-                sdxes, in_participant = self.get_first_sdxes_on_path(best_path)
-                if sdxes:
-                    if sdx_id in sdxes:
+            # check if best path goes through that SDX and if so, consider it as well
+            if n.destination in self.sdx_participants[n.in_participant]["best"]:
+                out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
+                if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
+                    # check if the intial sdx is on the path, if so, a loop is created
+                    if sdx_id in sdx_info[1]:
                         return False
-                    for sdx in sdxes:
-                        dfs_queue.append(self.dfs_node(sdx, in_participant, destination, n.match))
+                    for sdx in sdx_info[1]:
+                        dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, n.match))
 
-            # add all policy activated paths
+            # check all policy activated paths
             for participant in out_participants:
+                # only check it, if it is not the best path
                 if destination in self.sdx_participants[n.in_participant]["all"][participant]:
                     for match in self.sdx_structure[n.sdx_id][n.in_participant]["policies"][participant]:
-                        # check if policies overlap
                         new_match = HeaderBitString.combine(n.match, match)
                         if new_match:
-                            path = self.sdx_participants[n.in_participant]["all"][participant][destination]
-                            sdxes, in_participant = self.get_first_sdxes_on_path(path)
-                            if sdxes:
-                                if sdx_id in sdxes:
-                                    return False
-                                for sdx in sdxes:
-                                    dfs_queue.append(self.dfs_node(sdx, in_participant, destination, new_match))
+                            sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
+                            # check if the intial sdx is on the path, if so, a loop is created
+                            if sdx_id in sdx_info[1]:
+                                return False
+                            for sdx in sdx_info[1]:
+                                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, new_match))
         return True
-
-    def get_first_sdxes_on_path(self, as_path):
-        sdxes = set()
-
-        as2 = -1
-        for as1 in as_path:
-            if as2 != -1:
-                if as1 in self.sdx_participants:
-                    as1_sdxes = set(self.sdx_participants[as1]["ixps"])
-                else:
-                    as1_sdxes = set()
-                if as2 in self.sdx_participants:
-                    as2_sdxes = set(self.sdx_participants[as2]["ixps"])
-                else:
-                    as2_sdxes = set()
-
-                sdxes = as1_sdxes.intersection(as2_sdxes)
-                if len(sdxes) > 0:
-                    break
-            as2 = as1
-        return sdxes, as2
-
-    def get_sdxes_on_path(self, as_path):
-        sdxes = set()
-
-        as2 = -1
-        for as1 in as_path:
-            if as2 != -1:
-                if as1 in self.sdx_participants:
-                    as1_sdxes = set(self.sdx_participants[as1]["ixps"])
-                else:
-                    as1_sdxes = set()
-                if as2 in self.sdx_participants:
-                    as2_sdxes = set(self.sdx_participants[as2]["ixps"])
-                else:
-                    as2_sdxes = set()
-
-                intersection = as1_sdxes.intersection(as2_sdxes)
-                if len(intersection) > 0:
-                    sdxes = sdxes.union(intersection)
-            as2 = as1
-        return sdxes
 
 
 def main(argv):
@@ -321,7 +282,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, False)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, True)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"

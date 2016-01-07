@@ -20,9 +20,6 @@ class PolicyGenerator(object):
         self.ports_file = ports_file
         self.fraction = fraction
 
-        print "Generate Policies"
-        tmp_start = time.clock()
-
         # parse ports file
         self.ports = {}
         with open(self.ports_file) as infile:
@@ -37,8 +34,6 @@ class PolicyGenerator(object):
         self.port_counts["tcp"]["src"] = sum(self.ports["TCP"]["src"].itervalues())
         self.port_counts["tcp"]["dst"] = sum(self.ports["TCP"]["dst"].itervalues())
         self.port_counts["tcp"]["total"] = sum(self.port_counts["tcp"].itervalues())
-
-        print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
 
         # generate_policies
         with open(output_file, 'w') as output:
@@ -111,9 +106,10 @@ def main(argv):
     start = time.clock()
 
     with open(argv.sdx, 'r') as sdx_input:
-        sdx_structure = pickle.load(sdx_input)[0]
+        sdx_structure, _ = pickle.load(sdx_input)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
+
     print "Generate Policies"
     tmp_start = time.clock()
 

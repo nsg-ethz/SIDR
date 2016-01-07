@@ -12,7 +12,6 @@ from collections import defaultdict
 
 
 def main(argv):
-
     print "Read IXP File"
     start = time.clock()
 
@@ -41,9 +40,7 @@ def main(argv):
     sdx_participants = dict()
 
     with open(argv.paths) as infile:
-        i = 0
         for line in infile:
-            i += 1
             x = line.split("\n")[0].split("|")
             in_participant = int(x[0])
             if in_participant in participants_2_ixps:
@@ -56,6 +53,7 @@ def main(argv):
                 tmp_paths = x[2].split(";")
                 paths = [p.split(",") for p in tmp_paths]
 
+                j = 0
                 for path in paths:
                     for i in range(0, len(path)):
                         path[i] = int(path[i])
@@ -65,8 +63,16 @@ def main(argv):
                         if len(in_ixps.intersection(out_ixps)) > 0:
                             if out_participant not in sdx_participants[in_participant]["all"]:
                                 sdx_participants[in_participant]["all"][out_participant] = dict()
-                            sdx_participants[in_participant]["all"][out_participant][destination] = path
-                sdx_participants[in_participant]["best"][destination] = paths[0]
+                                sdx_participants[in_participant]["all"][out_participant]["other"] = 0
+
+                            sdx_info = get_first_sdxes_on_path(participants_2_ixps, path)
+                            if len(sdx_info[1]) == 0:
+                                sdx_participants[in_participant]["all"][out_participant]["other"] += 1
+                            else:
+                                sdx_participants[in_participant]["all"][out_participant][destination] = sdx_info
+                                if j == 0:
+                                    sdx_participants[in_participant]["best"][destination] = (out_participant, sdx_info)
+                    j += 1
 
     for participant in sdx_participants.keys():
         sdx_participants[participant]["ixps"] = participants_2_ixps[participant]
@@ -101,6 +107,29 @@ def main(argv):
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
+
+
+def get_first_sdxes_on_path(participants_2_ixps, as_path):
+    sdxes = set()
+
+    as2 = -1
+    for as1 in as_path:
+        if as2 != -1:
+            if as1 in participants_2_ixps:
+                as1_sdxes = set(participants_2_ixps[as1])
+            else:
+                as1_sdxes = set()
+            if as2 in participants_2_ixps:
+                as2_sdxes = set(participants_2_ixps[as2])
+            else:
+                as2_sdxes = set()
+
+            sdxes = as1_sdxes.intersection(as2_sdxes)
+            if len(sdxes) > 0:
+                break
+        as2 = as1
+    return as2, sdxes
+
 
 ''' main '''
 if __name__ == '__main__':
