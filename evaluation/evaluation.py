@@ -5,12 +5,9 @@
 import argparse
 import logging
 import pickle
-import json
 import time
 
 from collections import namedtuple
-
-from header_bitstring import HeaderBitString
 
 # SDX Structure
 # sdx_id - int
@@ -65,8 +62,7 @@ class Evaluator(object):
                 sdx_id = int(x[0])
                 from_participant = int(x[1])
                 to_participant = int(x[2])
-                tmp_match = json.loads(x[3])
-                match = HeaderBitString(match=tmp_match)
+                match = int(x[4])
 
                 if self.mode == 0:
                     tmp_total, tmp_installed = self.install_policy_no_bgp(sdx_id,
@@ -253,7 +249,7 @@ class Evaluator(object):
                 # only check it, if it is not the best path
                 if destination in self.sdx_participants[n.in_participant]["all"][participant]:
                     for match in self.sdx_structure[n.sdx_id][n.in_participant]["policies"][participant]:
-                        new_match = HeaderBitString.combine(n.match, match)
+                        new_match = Evaluator.combine(n.match, match)
                         if new_match:
                             sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
                             # check if the intial sdx is on the path, if so, a loop is created
@@ -262,6 +258,23 @@ class Evaluator(object):
                             for sdx in sdx_info[1]:
                                 dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, new_match))
         return True
+
+    @staticmethod
+    def combine(match1, match2):
+        combined_match = match1 & match2
+        if Evaluator.contains_impossible_bit(combined_match):
+            return None
+        else:
+            return combined_match
+
+    @staticmethod
+    def contains_impossible_bit(match):
+        bitstring = '{0:080b}'.format(match)
+        bits = [bitstring[i:i+2] for i in range(0, 80, 2)]
+        for bit in bits:
+            if bit == '00':
+                return True
+        return False
 
 
 def main(argv):

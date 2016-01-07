@@ -56,7 +56,8 @@ class PolicyGenerator(object):
                             output.write(str(sdx_id) + "|" +
                                          str(in_participant) + "|" +
                                          str(fwd) + "|" +
-                                         json.dumps(op) + "\n")
+                                         json.dumps(op) + "|" +
+                                         str(self.transform_match_to_int(op)) + "\n")
                         i += 1
 
     def get_match(self):
@@ -99,6 +100,54 @@ class PolicyGenerator(object):
             if r < s:
                 return int(k)
         return int(k)
+
+    def transform_match_to_int(self, match):
+        """
+        This method creates a bitstring from a high-level match dictionary.
+        :param match: high-level match dictionary (e.g. {'tcp_dst': 179})
+        :return: corresponding bit string
+        """
+
+        if ('tcp_src' in match or 'tcp_dst' in match) and ('udp_src' in match or 'udp_dst' in match):
+            return None
+
+        ip_proto = '{0:016b}'.format(2**16-1)
+        proto_src = '{0:032b}'.format(2**32-1)
+        proto_dst = '{0:032b}'.format(2**32-1)
+
+        if 'tcp_src' in match or 'tcp_dst' in match:
+            ip_proto = self.transform_bitstring('{0:08b}'.format(6))
+            if 'tcp_src' in match:
+                proto_src = self.transform_bitstring('{0:016b}'.format(match['tcp_src']))
+            if 'tcp_dst' in match:
+                proto_dst = self.transform_bitstring('{0:016b}'.format(match['tcp_dst']))
+        if 'udp_src' in match or 'udp_dst' in match:
+            ip_proto = self.transform_bitstring('{0:08b}'.format(17))
+            if 'udp_src' in match:
+                proto_src = self.transform_bitstring('{0:016b}'.format(match['udp_src']))
+            if 'udp_dst' in match:
+                proto_dst = self.transform_bitstring('{0:016b}'.format(match['udp_dst']))
+
+        # combine all fields
+        return int(''.join([ip_proto, proto_src, proto_dst]), 2)
+
+    @staticmethod
+    def transform_bitstring(bitstring):
+        """
+        Transforms an ordinary bitstring to a bitstring, where each 0 is replaced by 01, and each 1 by 10
+        :param bitstring: bitstring of any length to be converted
+        :return: converted string
+        """
+
+        result = ''
+
+        for bit in bitstring:
+            if bit == '0':
+                result += '01'
+            else:
+                result += '10'
+
+        return result
 
 
 def main(argv):
