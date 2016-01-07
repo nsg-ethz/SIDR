@@ -153,9 +153,6 @@ class Evaluator(object):
             # start the traversal of the sdx graph for each next hop sdx
             if self.traversal_our_scheme(sdx_id, destination, dfs_queue):
                 j += 1
-            else:
-                self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
 
         if j > 0:
             self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
@@ -231,9 +228,6 @@ class Evaluator(object):
             # start the traversal of the sdx graph for each next hop sdx
             if self.traversal_full_knowledge(sdx_id, destination, dfs_queue):
                 j += 1
-            else:
-                self.logger.debug("rejected " + str(match.get_match()) + " at SDX " + str(sdx_id) + " from " +
-                                  str(from_participant) + " to " + str(to_participant) + " for " + str(destination))
 
         if j > 0:
             self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
@@ -282,7 +276,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, True)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
