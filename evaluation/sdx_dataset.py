@@ -93,7 +93,7 @@ def main(argv):
                 sdx_structure[sdx_id][participant] = dict()
             out_participants = set(sdx_participants[participant]["all"].keys())
             sdx_structure[sdx_id][participant]["out_participants"] = out_participants.intersection(filter)
-            sdx_structure[sdx_id][participant]["policies"] = defaultdict(list)
+            sdx_structure[sdx_id][participant]["policies"] = defaultdict(dict)
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "Write sdx_participants and sdx_structure to a file"
