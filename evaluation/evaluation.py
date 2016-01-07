@@ -7,7 +7,7 @@ import logging
 import pickle
 import time
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 # SDX Structure
 # sdx_id - int
@@ -51,6 +51,8 @@ class Evaluator(object):
         self.dfs_node = namedtuple("DFSNode", "sdx_id in_participant destination match")
 
     def run_evaluation(self):
+        start = time.clock()
+
         total_policies = 0
         installed_policies = 0
 
@@ -84,7 +86,7 @@ class Evaluator(object):
 
                 i += 1
                 if i % 1000 == 0:
-                    self.logger.info("Tried install a total of " + str(total_policies) +
+                    self.logger.info(str(time.clock() - start) + " - tried install a total of " + str(total_policies) +
                                      ", managed to safely install " + str(installed_policies))
 
         return total_policies, installed_policies
@@ -105,9 +107,6 @@ class Evaluator(object):
         # check for each destination/prefix separately whether the policy is safe
         i = len(paths) - 1 + paths['other']
         j = paths['other']
-
-        if j > 0:
-            self.sdx_structure[sdx_id][from_participant]["policies"][to_participant] = match
 
         return i, j
 
@@ -130,12 +129,12 @@ class Evaluator(object):
             if destination == "other":
                 continue
 
-            # init queue
-            dfs_queue = list()
-
             if sdx_id in sdx_info[1]:
                 # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
                 continue
+
+            # init queue
+            dfs_queue = list()
 
             # add all next hop sdxes to the queue
             for sdx in sdx_info[1]:
@@ -145,8 +144,10 @@ class Evaluator(object):
             if self.traversal_our_scheme(sdx_id, destination, dfs_queue):
                 j += 1
 
-        if j > 0:
-            self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
+                if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
+                    self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
+                self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
+
         return i, j
 
     def traversal_our_scheme(self, sdx_id, destination, dfs_queue):
@@ -155,7 +156,7 @@ class Evaluator(object):
             n = dfs_queue.pop()
 
             # get all outgoing paths for the in_participant
-            out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"].keys()
+            out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"][n.destination].keys()
 
             check = list()
 
@@ -205,12 +206,12 @@ class Evaluator(object):
             if destination == "other":
                 continue
 
-            # init queue
-            dfs_queue = list()
-
             if sdx_id in sdx_info[1]:
                 # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
                 continue
+
+            # init queue
+            dfs_queue = list()
 
             # add all next hop sdxes to the queue
             for sdx in sdx_info[1]:
@@ -220,8 +221,9 @@ class Evaluator(object):
             if self.traversal_full_knowledge(sdx_id, destination, dfs_queue):
                 j += 1
 
-        if j > 0:
-            self.sdx_structure[sdx_id][from_participant]["policies"][to_participant].append(match)
+                if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
+                    self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
+                self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
 
         return i, j
 
@@ -232,7 +234,7 @@ class Evaluator(object):
             n = dfs_queue.pop()
 
             # get all outgoing paths for the in_participant
-            out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"].keys()
+            out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination].keys()
 
             # check if best path goes through that SDX and if so, consider it as well
             if n.destination in self.sdx_participants[n.in_participant]["best"]:
@@ -248,7 +250,7 @@ class Evaluator(object):
             for participant in out_participants:
                 # only check it, if it is not the best path
                 if destination in self.sdx_participants[n.in_participant]["all"][participant]:
-                    for match in self.sdx_structure[n.sdx_id][n.in_participant]["policies"][participant]:
+                    for match in self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination][participant]:
                         new_match = Evaluator.combine(n.match, match)
                         if new_match:
                             sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
