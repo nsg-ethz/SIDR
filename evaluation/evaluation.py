@@ -31,12 +31,12 @@ from collections import namedtuple, defaultdict
 
 
 class Evaluator(object):
-    def __init__(self, mode, sdx_structure_file, policy_file, debug=False):
+    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output, debug=False):
         self.logger = logging.getLogger("Evaluator")
         if debug:
             self.logger.setLevel(logging.DEBUG)
 
-        self.policy_file = policy_file
+        self.policy_path = policy_path
         self.sdx_structure_file = sdx_structure_file
 
         self.mode = 0
@@ -44,6 +44,11 @@ class Evaluator(object):
             self.mode = mode
         else:
             self.logger.error("invalid mode specified")
+
+        self.iterations = iterations
+        self.output = output
+        with open(self.output, 'w', 102400) as output:
+            output.write("Total Submitted Policies | Safe Policies | Communication Complexity\n")
 
         with open(sdx_structure_file, 'r') as sdx_input:
             self.sdx_structure, self.sdx_participants = pickle.load(sdx_input)
@@ -55,41 +60,58 @@ class Evaluator(object):
 
         total_policies = 0
         installed_policies = 0
+        communication_complexity = 0
 
-        i = 0
+        for j in range(0, self.iterations):
+            # run evaluation
+            with open(self.policy_path + "policies_" + str(j) + ".log", 'r') as policies:
+                i = 0
+                for policy in policies:
+                    i += 1
 
-        with open(self.policy_file, 'r') as policies:
-            for policy in policies:
-                x = policy.split("\n")[0].split("|")
-                sdx_id = int(x[0])
-                from_participant = int(x[1])
-                to_participant = int(x[2])
-                match = int(x[4])
+                    x = policy.split("\n")[0].split("|")
+                    sdx_id = int(x[0])
+                    from_participant = int(x[1])
+                    to_participant = int(x[2])
+                    match = int(x[4])
 
-                if self.mode == 0:
-                    tmp_total, tmp_installed = self.install_policy_no_bgp(sdx_id,
-                                                                          from_participant,
-                                                                          to_participant,
-                                                                          match)
-                elif self.mode == 1:
-                    tmp_total, tmp_installed = self.install_policy_our_scheme(sdx_id,
+                    if self.mode == 0:
+                        tmp_total, tmp_installed, tmp_communication = self.install_policy_no_bgp(sdx_id,
                                                                               from_participant,
                                                                               to_participant,
                                                                               match)
-                else:
-                    tmp_total, tmp_installed = self.install_policy_full_knowledge(sdx_id,
+                    elif self.mode == 1:
+                        tmp_total, tmp_installed, tmp_communication = self.install_policy_our_scheme(sdx_id,
                                                                                   from_participant,
                                                                                   to_participant,
                                                                                   match)
-                total_policies += tmp_total
-                installed_policies += tmp_installed
+                    else:
+                        tmp_total, tmp_installed, tmp_communication = self.install_policy_full_knowledge(sdx_id,
+                                                                                      from_participant,
+                                                                                      to_participant,
+                                                                                      match)
+                    total_policies += tmp_total
+                    installed_policies += tmp_installed
+                    communication_complexity += tmp_communication
 
-                i += 1
-                if i % 1000 == 0:
-                    self.logger.info(str(time.clock() - start) + " - tried install a total of " + str(total_policies) +
-                                     ", managed to safely install " + str(installed_policies))
+                    if i % 1000 == 0:
+                        self.logger.debug(str(time.clock() - start) + " - tried to install a total of " + str(total_policies) +
+                                         ", managed to safely install " + str(installed_policies))
 
-        return total_policies, installed_policies
+            # output
+            self.logger.info("Total Policies: " + str(total_policies) +
+                              ", Safe Policies: " + str(installed_policies) +
+                              ", Communication Complexity: " + str(communication_complexity))
+
+            # store results
+            with open(self.output, 'a', 102400) as output:
+                output.write(str(total_policies) + "|" + str(installed_policies) + "|" +
+                             str(communication_complexity) + "\n")
+
+            # prepare for next iteration
+            for sdx_id, participant_data in self.sdx_structure.iteritems():
+                for participant, data in participant_data.iteritems():
+                    data["policies"] = defaultdict(dict)
 
     def install_policy_no_bgp(self, sdx_id, from_participant, to_participant, match):
         """
@@ -108,7 +130,7 @@ class Evaluator(object):
         i = len(paths) - 1 + paths['other']
         j = paths['other']
 
-        return i, j
+        return i, j, 0
 
     def install_policy_our_scheme(self, sdx_id, from_participant, to_participant, match):
         """
@@ -125,6 +147,8 @@ class Evaluator(object):
         i = len(paths) - 1 + paths['other']
         j = paths['other']
 
+        k = 0
+
         for destination, sdx_info in paths.iteritems():
             if destination == "other":
                 continue
@@ -139,18 +163,24 @@ class Evaluator(object):
             # add all next hop sdxes to the queue
             for sdx in sdx_info[1]:
                 dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None))
+                k += 1
 
             # start the traversal of the sdx graph for each next hop sdx
-            if self.traversal_our_scheme(sdx_id, destination, dfs_queue):
+            safe, msgs = self.traversal_our_scheme(sdx_id, destination, dfs_queue)
+            k += msgs
+
+            if safe:
                 j += 1
 
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
 
-        return i, j
+        return i, j, k
 
     def traversal_our_scheme(self, sdx_id, destination, dfs_queue):
+        num_msgs = 0
+
         # start traversal of SDX graph
         while dfs_queue:
             n = dfs_queue.pop()
@@ -163,12 +193,14 @@ class Evaluator(object):
             # check if best path goes through that SDX and if so, consider it as well
             if n.destination in self.sdx_participants[n.in_participant]["best"]:
                 out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
+
                 if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
                     # check if the intial sdx is on the path, if so, a loop is created
                     if sdx_id in sdx_info[1]:
-                        return False
+                        return False, num_msgs
                     for sdx in sdx_info[1]:
                         dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None))
+                        num_msgs += 1
                         check.append((sdx_info[0], sdx))
 
             # check all policy activated paths
@@ -176,16 +208,18 @@ class Evaluator(object):
                 # only check it, if it is not the best path
                 if destination in self.sdx_participants[n.in_participant]["all"][participant]:
                     sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
+
                     # check if the intial sdx is on the path, if so, a loop is created
                     if sdx_id in sdx_info[1]:
-                        return False
+                        return False, num_msgs
                     for sdx in sdx_info[1]:
                         if (sdx_info[0], sdx) in check:
                             continue
                         else:
                             check.append((sdx_info[0], sdx))
                             dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None))
-        return True
+                            num_msgs += 1
+        return True, num_msgs
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
         """
@@ -201,6 +235,7 @@ class Evaluator(object):
         paths = self.sdx_participants[from_participant]["all"][to_participant]
         i = len(paths) - 1 + paths['other']
         j = paths['other']
+        k = 0
 
         for destination, sdx_info in paths.iteritems():
             if destination == "other":
@@ -216,20 +251,25 @@ class Evaluator(object):
             # add all next hop sdxes to the queue
             for sdx in sdx_info[1]:
                 dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, match))
+                k += 1
 
             # start the traversal of the sdx graph for each next hop sdx
-            if self.traversal_full_knowledge(sdx_id, destination, dfs_queue):
+            safe, msgs = self.traversal_full_knowledge(sdx_id, destination, dfs_queue)
+            k += msgs
+
+            if safe:
                 j += 1
 
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
 
-        return i, j
+        return i, j, k
 
     def traversal_full_knowledge(self, sdx_id, destination, dfs_queue):
-        # start traversal
+        num_msgs = 0
 
+        # start traversal
         while dfs_queue:
             n = dfs_queue.pop()
 
@@ -242,9 +282,10 @@ class Evaluator(object):
                 if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
                     # check if the intial sdx is on the path, if so, a loop is created
                     if sdx_id in sdx_info[1]:
-                        return False
+                        return False, num_msgs
                     for sdx in sdx_info[1]:
                         dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, n.match))
+                        num_msgs += 1
 
             # check all policy activated paths
             for participant in out_participants:
@@ -256,10 +297,11 @@ class Evaluator(object):
                             sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
                             # check if the intial sdx is on the path, if so, a loop is created
                             if sdx_id in sdx_info[1]:
-                                return False
+                                return False, num_msgs
                             for sdx in sdx_info[1]:
                                 dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, new_match))
-        return True
+                                num_msgs += 1
+        return True, num_msgs
 
     @staticmethod
     def combine(match1, match2):
@@ -286,19 +328,16 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, False)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), argv.output, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
     tmp_start = time.clock()
 
-    total_policies, installed_policies = evaluator.run_evaluation()
+    evaluator.run_evaluation()
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
-
-    print "Final Result: Tried to install a total of " + str(total_policies) + ", managed to safely install " + \
-          str(installed_policies)
 
 
 ''' main '''
@@ -307,7 +346,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', help='evaluation mode')
     parser.add_argument('sdx', help='path to pickled sdx_structure file')
-    parser.add_argument('policies', help='path to ports file')
+    parser.add_argument('policies', help='path to policy files')
+    parser.add_argument('iterations', help='number of iterations')
+    parser.add_argument('output', help='path of output file')
 
     args = parser.parse_args()
 

@@ -14,9 +14,9 @@ from collections import defaultdict
 
 
 class PolicyGenerator(object):
-    def __init__(self, sdx_structure, fraction, output_file, ports_file):
+    def __init__(self, sdx_structure, fraction, output_path, ports_file, iterations):
         self.sdx_structure = sdx_structure
-        self.output_file = output_file
+        self.output_path = output_path
         self.ports_file = ports_file
         self.fraction = fraction
 
@@ -36,38 +36,39 @@ class PolicyGenerator(object):
         self.port_counts["tcp"]["total"] = sum(self.port_counts["tcp"].itervalues())
 
         # generate_policies
-        with open(output_file, 'w') as output:
-            for sdx_id in sdx_structure:
-                for in_participant, data in sdx_structure[sdx_id].iteritems():
-                    fwds = list(data["out_participants"])
-                    shuffle(fwds)
+        for j in range(0, iterations):
+            with open(output_path + "policies_" + str(j) + ".log", 'w') as output:
+                for sdx_id in sdx_structure:
+                    for in_participant, data in sdx_structure[sdx_id].iteritems():
+                        fwds = list(data["out_participants"])
+                        shuffle(fwds)
 
-                    i = 0
+                        i = 0
 
-                    for fwd in fwds:
-                        # stop if we have a policy for half of the eyeballs
-                        if i >= len(fwds)/self.fraction:
-                            break
+                        for fwd in fwds:
+                            # stop if we have a policy for half of the eyeballs
+                            if i >= len(fwds)/self.fraction:
+                                break
 
-                        # install between 1 and 4 policies per participant and fwd
-                        x = random.randrange(1, 5)
-                        matches = list()
-                        for _ in range(0, x):
-                            op = self.get_match()
-                            match_int = self.transform_match_to_int(op)
-
-                            while match_int in matches:
+                            # install between 1 and 4 policies per participant and fwd
+                            x = random.randrange(1, 5)
+                            matches = list()
+                            for _ in range(0, x):
                                 op = self.get_match()
                                 match_int = self.transform_match_to_int(op)
 
-                            matches.append(match_int)
+                                while match_int in matches:
+                                    op = self.get_match()
+                                    match_int = self.transform_match_to_int(op)
 
-                            output.write(str(sdx_id) + "|" +
-                                         str(in_participant) + "|" +
-                                         str(fwd) + "|" +
-                                         json.dumps(op) + "|" +
-                                         str(match_int) + "\n")
-                        i += 1
+                                matches.append(match_int)
+
+                                output.write(str(sdx_id) + "|" +
+                                             str(in_participant) + "|" +
+                                             str(fwd) + "|" +
+                                             json.dumps(op) + "|" +
+                                             str(match_int) + "\n")
+                            i += 1
 
     def get_match(self):
         # pick protocol
@@ -171,7 +172,7 @@ def main(argv):
     print "Generate Policies"
     tmp_start = time.clock()
 
-    PolicyGenerator(sdx_structure, int(argv.fraction), argv.output, argv.ports)
+    PolicyGenerator(sdx_structure, int(argv.fraction), argv.output, argv.ports, int(argv.iterations))
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
@@ -185,6 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('ports', help='path to ports file')
     parser.add_argument('fraction', help='fraction of outgoing policies')
     parser.add_argument('output', help='path of output file')
+    parser.add_argument('iterations', help='number of iterations')
 
     args = parser.parse_args()
 
