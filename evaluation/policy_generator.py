@@ -51,13 +51,22 @@ class PolicyGenerator(object):
 
                         # install between 1 and 4 policies per participant and fwd
                         x = random.randrange(1, 5)
+                        matches = list()
                         for _ in range(0, x):
                             op = self.get_match()
+                            match_int = self.transform_match_to_int(op)
+
+                            while match_int in matches:
+                                op = self.get_match()
+                                match_int = self.transform_match_to_int(op)
+
+                            matches.append(match_int)
+
                             output.write(str(sdx_id) + "|" +
                                          str(in_participant) + "|" +
                                          str(fwd) + "|" +
                                          json.dumps(op) + "|" +
-                                         str(self.transform_match_to_int(op)) + "\n")
+                                         str(match_int) + "\n")
                         i += 1
 
     def get_match(self):
