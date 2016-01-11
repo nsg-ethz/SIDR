@@ -16,7 +16,7 @@ for each participant, between 1 and 4 policies are created for 1/X of the outgoi
 Evaluate Policies
 ```bash
 $ python evaluation.py <mode> <sdx dataset file> <policies file> <number of iterations> <output file>
-$ python evaluation.py 0 test/sdx_dataset.log test/policies.log 1 test/evaluation_0.log
+$ python evaluation.py 0 test/sdx_dataset.log test/ 1 test/evaluation_0.log
 ```
 
 * mode 0: local BGP only
