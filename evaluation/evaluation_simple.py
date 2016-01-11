@@ -246,7 +246,7 @@ class Evaluator(object):
                 dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, match))
 
             # start the traversal of the sdx graph for each next hop sdx
-            safe, cycle_length = self.traversal_full_knowledge(sdx_id, destination, dfs_queue)
+            safe = self.traversal_full_knowledge(sdx_id, destination, dfs_queue)
 
             if safe:
                 num_safe_policies += 1
