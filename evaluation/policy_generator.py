@@ -14,11 +14,17 @@ from collections import defaultdict
 
 
 class PolicyGenerator(object):
-    def __init__(self, sdx_structure, fraction, output_path, ports_file, iterations):
+    def __init__(self, mode, sdx_structure, fraction, output_path, ports_file, iterations):
         self.sdx_structure = sdx_structure
         self.output_path = output_path
         self.ports_file = ports_file
         self.fraction = fraction
+        self.mode = mode
+
+        if mode == 0:
+            max = 1
+        else:
+            max = 5
 
         # parse ports file
         self.ports = {}
@@ -51,7 +57,7 @@ class PolicyGenerator(object):
                                 break
 
                             # install between 1 and 4 policies per participant and fwd
-                            x = random.randrange(1, 5)
+                            x = random.randrange(1, max)
                             matches = list()
                             for _ in range(0, x):
                                 op = self.get_match()
@@ -71,6 +77,29 @@ class PolicyGenerator(object):
                             i += 1
 
     def get_match(self):
+        # all policies have exactly the same match
+        if self.mode == 0:
+            return {"ip_proto": 6, "eth_type": 2048, "tcp_dst": 80}
+        # match field is drawn according to distribution in specified file
+        elif self.mode == 1:
+            return self.get_weighted_match()
+        elif self.mode == 2:
+            return self.get_random_match()
+
+    @staticmethod
+    def get_random_match():
+        port = random.randint(1,65537)
+        rnd = random.randint(0,5)
+        if rnd == 0:
+            return {"tcp_dst": port, 'eth_type': 0x0800, 'ip_proto': 6}
+        if rnd == 2:
+            return {"tcp_src": port, 'eth_type': 0x0800, 'ip_proto': 6}
+        if rnd == 3:
+            return {"udp_dst": port, 'eth_type': 0x0800, 'ip_proto': 17}
+        else:
+            return {"udp_src": port, 'eth_type': 0x0800, 'ip_proto': 17}
+
+    def get_weighted_match(self):
         # pick protocol
         proto_pick = random.uniform(0, self.port_counts["udp"]["total"] + self.port_counts["tcp"]["total"])
         if proto_pick <= self.port_counts["udp"]["total"]:
@@ -172,7 +201,7 @@ def main(argv):
     print "Generate Policies"
     tmp_start = time.clock()
 
-    PolicyGenerator(sdx_structure, int(argv.fraction), argv.output, argv.ports, int(argv.iterations))
+    PolicyGenerator(argv.mode, sdx_structure, int(argv.fraction), argv.output, argv.ports, int(argv.iterations))
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
@@ -182,6 +211,7 @@ def main(argv):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('mode', help='mode of operation')
     parser.add_argument('sdx', help='path to pickled sdx_structure file')
     parser.add_argument('ports', help='path to ports file')
     parser.add_argument('fraction', help='fraction of outgoing policies')

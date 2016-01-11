@@ -8,9 +8,14 @@ $ python sdx_dataset.py test/routes.txt test/ixp_file.json test/sdx_dataset.log
 
 Build Policies
 ```bash
-$ python policy_generator.py <sdx dataset file> <ports file> <X> <path to policy output file> <number of iterations>
+$ python policy_generator.py <mode> <sdx dataset file> <ports file> <X> <path to policy output file> <number of iterations>
 $ python policy_generator.py test/sdx_dataset.log test/port_distribution.log 1 test/ 1
 ```
+
+* mode 0: all matches are tcp_dst=80
+* mode 1: ports to match on are picked according to distribution in ports file
+* mode 2: random selection of ports
+
 for each participant, between 1 and 4 policies are created for 1/X of the outgoing participants
 
 Evaluate Policies
