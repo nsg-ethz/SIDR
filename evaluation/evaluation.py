@@ -31,7 +31,7 @@ from collections import namedtuple, defaultdict
 
 
 class Evaluator(object):
-    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output, debug=False):
+    def __init__(self, mode, own_id, sdx_structure_file, policy_path, iterations, output, debug=False):
         self.logger = logging.getLogger("Evaluator")
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -39,6 +39,7 @@ class Evaluator(object):
         self.policy_path = policy_path
         self.sdx_structure_file = sdx_structure_file
 
+        self.own_id = own_id
         self.mode = 0
         if 0 <= mode < 4:
             self.mode = mode
@@ -175,7 +176,17 @@ class Evaluator(object):
         paths = self.sdx_participants[from_participant]["all"][to_participant]
 
         # check for each destination/prefix separately whether the policy is safe
-        i = len(paths) - 1 + paths['other']
+        i = 0
+        if self.own_id:
+            for destination, sdx_info in paths.iteritems():
+                next_sdxes = sdx_info[1]
+
+                next_sdxes.discard(sdx_id)
+
+                if len(next_sdxes) != 0:
+                    i += 1
+        else:
+            i = len(paths) - 1 + paths['other']
         j = paths['other']
 
         return i, j, 0
@@ -207,7 +218,13 @@ class Evaluator(object):
             if destination == "other":
                 continue
 
-            if sdx_id in sdx_info[1]:
+            in_participant = sdx_info[0]
+            next_sdxes = sdx_info[1]
+
+            if self.own_id:
+                next_sdxes.discard(sdx_id)
+
+            if sdx_id in next_sdxes:
                 simple_loops += 1
                 # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
                 continue
@@ -216,10 +233,10 @@ class Evaluator(object):
             dfs_queue = list()
 
             # add all next hop sdxes to the queue
-            for sdx in sdx_info[1]:
-                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, None, 1))
+            for sdx in next_sdxes:
+                dfs_queue.append(self.dfs_node(sdx, in_participant, destination, None, 1))
                 # count the message
-                unique_messages[sdx][sdx_id].add(sdx_info[0])
+                unique_messages[sdx][sdx_id].add(in_participant)
                 total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
@@ -327,7 +344,13 @@ class Evaluator(object):
             if destination == "other":
                 continue
 
-            if sdx_id in sdx_info[1]:
+            in_participant = sdx_info[0]
+            next_sdxes = sdx_info[1]
+
+            if self.own_id:
+                next_sdxes.discard(sdx_id)
+
+            if sdx_id in next_sdxes:
                 simple_loops += 1
                 # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
                 continue
@@ -336,10 +359,10 @@ class Evaluator(object):
             dfs_queue = list()
 
             # add all next hop sdxes to the queue
-            for sdx in sdx_info[1]:
-                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, match, 1))
+            for sdx in next_sdxes:
+                dfs_queue.append(self.dfs_node(sdx, in_participant, destination, match, 1))
                 # count the message
-                unique_messages[sdx][sdx_id][sdx_info[0]].add(match)
+                unique_messages[sdx][sdx_id][in_participant].add(match)
                 total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
@@ -437,7 +460,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), argv.output, False)
+    evaluator = Evaluator(int(argv.mode), argv.own_id, argv.sdx, argv.policies, int(argv.iterations), argv.output, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
@@ -458,6 +481,7 @@ if __name__ == '__main__':
     parser.add_argument('policies', help='path to policy files')
     parser.add_argument('iterations', help='number of iterations')
     parser.add_argument('output', help='path of output file')
+    parser.add_argument('-o', '--ownid', help='remove the installer sdx from all first next hop', action="store_true")
 
     args = parser.parse_args()
 
