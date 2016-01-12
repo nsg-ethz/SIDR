@@ -5,6 +5,7 @@
 import argparse
 import json
 import time
+import random
 
 import cPickle as pickle
 
@@ -12,6 +13,8 @@ from collections import defaultdict
 
 
 def main(argv):
+    mode = int(argv.mode)
+
     print "Read IXP File"
     start = time.clock()
 
@@ -109,7 +112,7 @@ def main(argv):
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
 
 
-def get_first_sdxes_on_path(participants_2_ixps, as_path):
+def get_first_sdxes_on_path(mode, participants_2_ixps, as_path):
     sdxes = set()
 
     as2 = -1
@@ -128,6 +131,9 @@ def get_first_sdxes_on_path(participants_2_ixps, as_path):
             if len(sdxes) > 0:
                 break
         as2 = as1
+
+    if mode == 1:
+        sdxes = set(random.choice(list(sdxes)))
     return as2, sdxes
 
 
@@ -135,6 +141,7 @@ def get_first_sdxes_on_path(participants_2_ixps, as_path):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('mode', help='mode of operation')
     parser.add_argument('paths', help='path to paths file')
     parser.add_argument('ixps', help='path to ixp file')
     parser.add_argument('output', help='path of output file')
