@@ -18,6 +18,7 @@ def main(argv):
     total = defaultdict(list)
     safe = defaultdict(list)
     communication = defaultdict(list)
+    messages = defaultdict(list)
 
     titles = ["Local BGP", "Our Scheme", "Full Knowledge"]
 
@@ -29,6 +30,7 @@ def main(argv):
             tmp_comm = [0, 0, 0]
             tmp_safe = [0, 0, 0]
             tmp_total = [0, 0, 0]
+            tmp_msgs = [0, 0]
             for data_point in data.values():
                 tmp_comm[0] += data_point["bgp_only"]["num_msgs"]
                 tmp_safe[0] += data_point["bgp_only"]["frac2"]
@@ -37,10 +39,12 @@ def main(argv):
                 tmp_comm[1] += data_point["our_scheme"]["num_msgs"]
                 tmp_safe[1] += data_point["our_scheme"]["frac2"]
                 tmp_total[1] += data_point["our_scheme"]["frac1"]
+                tmp_msgs[0] += data_point["our_scheme"]["frac_msgs"]
 
                 tmp_comm[2] += data_point["full_knowledge"]["num_msgs"]
                 tmp_safe[2] += data_point["full_knowledge"]["frac2"]
                 tmp_total[2] += data_point["full_knowledge"]["frac1"]
+                tmp_msgs[1] += data_point["full_knowledge"]["frac_msgs"]
 
             total[0].append(tmp_total[0]/len(data))
             safe[0].append(tmp_safe[0]/len(data))
@@ -49,10 +53,12 @@ def main(argv):
             total[1].append(tmp_total[1]/len(data))
             safe[1].append(tmp_safe[1]/len(data))
             communication[1].append(tmp_comm[1]/len(data))
+            messages[0].append(tmp_msgs[0]/len(data))
 
             total[2].append(tmp_total[2]/len(data))
             safe[2].append(tmp_safe[2]/len(data))
             communication[2].append(tmp_comm[2]/len(data))
+            messages[1].append(tmp_msgs[1]/len(data))
 
     # safe
     fig, ax = plt.subplots()
@@ -69,6 +75,7 @@ def main(argv):
 
     # add some text for labels, title and axes ticks
     ax.set_ylabel('Fraction of Installed Policies')
+    ax.set_xlabel('Number of Destinations')
     ax.set_title('Installed Policies with respect to Safe Policies')
     ax.set_xticks(ind + ((i+1)*width/2))
     ax.set_xticklabels(('500', '1000', '5000', '10000'))
@@ -96,6 +103,7 @@ def main(argv):
 
     # add some text for labels, title and axes ticks
     ax.set_ylabel('Fraction of Installed Policies')
+    ax.set_xlabel('Number of Destinations')
     ax.set_title('Installed Policies with respect to Total Submitted Policies')
     ax.set_xticks(ind + ((i+1)*width/2))
     ax.set_xticklabels(('500', '1000', '5000', '10000'))
@@ -117,13 +125,14 @@ def main(argv):
     color = ['r', 'gold', 'c', 'b']
 
     i = 1
-    for tmp_means in communication.values():
+    for tmp_means in messages.values():
         rects.append(ax.bar(ind + i*width, tmp_means, width, color=color[i-1]))
         i += 1
 
     # add some text for labels, title and axes ticks
-    ax.set_ylabel('Number of Messages Exchanged')
-    ax.set_title('Communication Complexity in Terms of Exchanged Messages')
+    ax.set_ylabel('Number of Messages')
+    ax.set_xlabel('Number of Destinations')
+    ax.set_title('Number of Messages Exchanged per Policy Installation')
     ax.set_xticks(ind + ((i+1)*width/2))
     ax.set_xticklabels(('500', '1000', '5000', '10000'))
 
