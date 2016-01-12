@@ -68,7 +68,7 @@ def main(argv):
                                 sdx_participants[in_participant]["all"][out_participant] = dict()
                                 sdx_participants[in_participant]["all"][out_participant]["other"] = 0
 
-                            sdx_info = get_first_sdxes_on_path(participants_2_ixps, path)
+                            sdx_info = get_first_sdxes_on_path(mode, participants_2_ixps, path)
                             if len(sdx_info[1]) == 0:
                                 sdx_participants[in_participant]["all"][out_participant]["other"] += 1
                             else:
@@ -132,8 +132,8 @@ def get_first_sdxes_on_path(mode, participants_2_ixps, as_path):
                 break
         as2 = as1
 
-    if mode == 1:
-        sdxes = set(random.choice(list(sdxes)))
+    if mode == 1 and len(sdxes) > 1:
+        sdxes = set([random.choice(list(sdxes))])
     return as2, sdxes
 
 

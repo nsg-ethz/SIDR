@@ -275,7 +275,7 @@ class Evaluator(object):
 
             # add all next hop sdxes to the queue
             for sdx in sdx_info[1]:
-                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, match))
+                dfs_queue.append(self.dfs_node(sdx, sdx_info[0], destination, match, 1))
                 unique_messages[sdx][sdx_id][sdx_info[0]].add(match)
 
             # start the traversal of the sdx graph for each next hop sdx

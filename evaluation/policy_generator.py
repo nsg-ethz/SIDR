@@ -22,7 +22,7 @@ class PolicyGenerator(object):
         self.mode = mode
 
         if mode == 0:
-            max = 1
+            max = 2
         else:
             max = 5
 
@@ -201,7 +201,7 @@ def main(argv):
     print "Generate Policies"
     tmp_start = time.clock()
 
-    PolicyGenerator(argv.mode, sdx_structure, int(argv.fraction), argv.output, argv.ports, int(argv.iterations))
+    PolicyGenerator(int(argv.mode), sdx_structure, int(argv.fraction), argv.output, argv.ports, int(argv.iterations))
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
