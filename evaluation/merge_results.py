@@ -55,6 +55,13 @@ def main(argv):
         results[k]["full_knowledge"]["frac2"] = float(results[k]["full_knowledge"]["safe"]) / \
                                                   float(results[k]["full_knowledge"]["safe"])
 
+        results[k]["bgp_only"]["frac_msgs"] = float(results[k]["bgp_only"]["num_msgs"]) / \
+                                              float(results[k]["full_knowledge"]["safe"])
+        results[k]["our_scheme"]["frac_msgs"] = float(results[k]["our_scheme"]["num_msgs"]) / \
+                                                float(results[k]["full_knowledge"]["safe"])
+        results[k]["full_knowledge"]["frac_msgs"] = float(results[k]["full_knowledge"]["num_msgs"]) / \
+                                                    float(results[k]["full_knowledge"]["safe"])
+
     with open(argv.output, 'w') as outfile:
         json.dump(results, outfile)
 
