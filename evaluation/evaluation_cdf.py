@@ -6,6 +6,7 @@ import argparse
 import logging
 import pickle
 import time
+import json
 
 from collections import namedtuple, defaultdict
 
@@ -31,7 +32,7 @@ from collections import namedtuple, defaultdict
 
 
 class Evaluator(object):
-    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output, debug=False):
+    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output_file, messages_file, hops_file, debug=False):
         self.logger = logging.getLogger("Evaluator")
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -46,9 +47,12 @@ class Evaluator(object):
             self.logger.error("invalid mode specified")
 
         self.iterations = iterations
-        self.output = output
+        self.output = output_file
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | Safe Policies | messages | hops \n")
+
+        self.messages_file = messages_file
+        self.hops_file = hops_file
 
         with open(sdx_structure_file, 'r') as sdx_input:
             self.sdx_structure, self.sdx_participants = pickle.load(sdx_input)
@@ -58,12 +62,13 @@ class Evaluator(object):
     def run_evaluation(self):
         start = time.clock()
 
+        received_messages = defaultdict(int)
+        num_hops = defaultdict(int)
+
         for j in range(0, self.iterations):
             # run evaluation
             total_policies = 0
             installed_policies = 0
-            received_messages = list()
-            num_hops = list()
 
             with open(self.policy_path + "policies_" + str(j) + ".log", 'r') as policies:
                 i = 0
@@ -95,11 +100,14 @@ class Evaluator(object):
                                                                    to_participant,
                                                                    match)
 
+                        for hop in tmp_num_hops:
+                            num_hops[hop] += 1
+
+                        for msgs in tmp_received_messages:
+                            received_messages[msgs] += 1
+
                     total_policies += tmp_total
                     installed_policies += tmp_installed
-
-                    num_hops += tmp_num_hops
-                    received_messages += tmp_received_messages
 
                     if i % 1000 == 0:
                         self.logger.debug(str(time.clock() - start) + " - tried to install a total of " +
@@ -121,6 +129,14 @@ class Evaluator(object):
             for sdx_id, participant_data in self.sdx_structure.iteritems():
                 for participant, data in participant_data.iteritems():
                     data["policies"] = defaultdict(dict)
+
+        with open(self.messages_file, 'w', 102400) as output:
+            data = json.dumps(received_messages)
+            output.write(data)
+
+        with open(self.hops_file, 'w', 102400) as output:
+            data = json.dumps(num_hops)
+            output.write(data)
 
     def install_policy_no_bgp(self, sdx_id, from_participant, to_participant, match):
         """
@@ -381,6 +397,8 @@ if __name__ == '__main__':
     parser.add_argument('policies', help='path to policy files')
     parser.add_argument('iterations', help='number of iterations')
     parser.add_argument('output', help='path of output file')
+    parser.add_argument('messages', help='path of messages output file')
+    parser.add_argument('length', help='path of length output file')
 
     args = parser.parse_args()
 
