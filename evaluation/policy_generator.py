@@ -53,7 +53,7 @@ class PolicyGenerator(object):
 
                         for fwd in fwds:
                             # stop if we have a policy for half of the eyeballs
-                            if i >= len(fwds)/self.fraction:
+                            if i >= len(fwds)*self.fraction:
                                 break
 
                             # install between 1 and 4 policies per participant and fwd
@@ -89,12 +89,12 @@ class PolicyGenerator(object):
     @staticmethod
     def get_random_match():
         port = random.randint(1,65537)
-        rnd = random.randint(0,5)
+        rnd = random.randint(0,4)
         if rnd == 0:
             return {"tcp_dst": port, 'eth_type': 0x0800, 'ip_proto': 6}
-        if rnd == 2:
+        if rnd == 1:
             return {"tcp_src": port, 'eth_type': 0x0800, 'ip_proto': 6}
-        if rnd == 3:
+        if rnd == 2:
             return {"udp_dst": port, 'eth_type': 0x0800, 'ip_proto': 17}
         else:
             return {"udp_src": port, 'eth_type': 0x0800, 'ip_proto': 17}
@@ -201,7 +201,7 @@ def main(argv):
     print "Generate Policies"
     tmp_start = time.clock()
 
-    PolicyGenerator(int(argv.mode), sdx_structure, int(argv.fraction), argv.output, argv.ports, int(argv.iterations))
+    PolicyGenerator(int(argv.mode), sdx_structure, float(argv.fraction), argv.output, argv.ports, int(argv.iterations))
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
