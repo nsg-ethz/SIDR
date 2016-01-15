@@ -55,7 +55,7 @@ class Evaluator(object):
         with open(sdx_structure_file, 'r') as sdx_input:
             self.sdx_structure, self.sdx_participants = pickle.load(sdx_input)
 
-        self.dfs_node = namedtuple("DFSNode", "sdx_id in_participant destinations match hop")
+        self.dfs_node = namedtuple("DFSNode", "sdx_id in_participant destination match hop")
 
     def run_evaluation(self):
         start = time.clock()
@@ -64,8 +64,13 @@ class Evaluator(object):
             # run evaluation
             total_policies = 0
             installed_policies = 0
+            communication_complexity = 0
             unique_messages = 0
-            num_recipients = 0
+            recipients = 0
+            num_cycles = 0
+            total_cycle_length = 0
+            longest_cycle = 0
+            shortest_cycle = 10000
             simple_loops = 0
 
             with open(self.policy_path + "policies_" + str(j) + ".log", 'r') as policies:
@@ -80,19 +85,21 @@ class Evaluator(object):
                     match = int(x[4])
 
                     if self.mode == 0:
-                        tmp_total, tmp_installed, tmp_unique_messages = self.install_policy_no_bgp(sdx_id,
+                        tmp_total, tmp_installed, tmp_communication = self.install_policy_no_bgp(sdx_id,
                                                                               from_participant,
                                                                               to_participant,
                                                                               match)
                     else:
                         if self.mode == 1:
-                            tmp_total, tmp_installed, tmp_unique_messages, tmp_num_recipients, tmp_simple_loops = \
+                            tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
+                            tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, tmp_simple_loops = \
                                 self.install_policy_our_scheme(sdx_id,
                                                                from_participant,
                                                                to_participant,
                                                                match)
                         else:
-                            tmp_total, tmp_installed, tmp_unique_messages, tmp_num_recipients, tmp_simple_loops = \
+                            tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
+                            tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, tmp_simple_loops = \
                                 self.install_policy_full_knowledge(sdx_id,
                                                                    from_participant,
                                                                    to_participant,
@@ -100,13 +107,22 @@ class Evaluator(object):
 
                         # communication
                         unique_messages += tmp_unique_messages
-                        num_recipients += tmp_num_recipients
+                        recipients += tmp_num_recipients
+
+                        # cycle
+                        total_cycle_length += tmp_cycle_length
+                        num_cycles += tmp_num_cycles
+                        if tmp_longest_cycle > longest_cycle:
+                            longest_cycle = tmp_longest_cycle
+                        if tmp_shortest_cycle < shortest_cycle and tmp_num_cycles > 0:
+                            shortest_cycle = tmp_shortest_cycle
 
                         # check
                         simple_loops += tmp_simple_loops
 
                     total_policies += tmp_total
                     installed_policies += tmp_installed
+                    communication_complexity += tmp_communication
 
                     if i % 1000 == 0:
                         self.logger.debug(str(time.clock() - start) + " - tried to install a total of " +
@@ -114,21 +130,30 @@ class Evaluator(object):
                                           str(installed_policies))
 
             # get means
-            received_messages = float(unique_messages)/float(num_recipients) if num_recipients != 0 else 0
+            av_cycle = float(total_cycle_length)/float(num_cycles) if num_cycles != 0 else 0
+            received_messages = float(unique_messages)/float(recipients) if recipients != 0 else 0
 
             # output
             self.logger.info("Total Policies: " + str(total_policies) +
                              ", Safe Policies: " + str(installed_policies) +
+                             ", Communication Complexity: " + str(communication_complexity) +
                              ", Unique Messages: " + str(unique_messages) +
                              ", Received Messages: " + str(received_messages) +
+                             ", Longest Cycle: " + str(longest_cycle) +
+                             ", Shortest Cycle: " + str(shortest_cycle) +
+                             ", Average Cycle: " + str(av_cycle) +
                              ", Simple Loops: " + str(simple_loops))
 
             # store results
             with open(self.output, 'a', 102400) as output:
                 output.write(str(total_policies) + "|" +
                              str(installed_policies) + "|" +
+                             str(communication_complexity) + "|" +
                              str(unique_messages) + "|" +
                              str(received_messages) + "|" +
+                             str(longest_cycle) + "|" +
+                             str(shortest_cycle) + "|" +
+                             str(av_cycle) + "|" +
                              str(simple_loops) + "\n")
 
             # prepare for next iteration
@@ -168,85 +193,115 @@ class Evaluator(object):
         # check for each destination/prefix separately whether the policy is safe
         paths = self.sdx_participants[from_participant]["all"][to_participant]
         total_num_policies = len(paths) - 1 + paths['other']
+        num_safe_policies = paths['other']
+        total_num_messages = 0
+        total_cycle_length = 0
+        num_cycles = 0
+        longest_cycle = 0
+        shortest_cycle = 100000
+        unique_messages = defaultdict(lambda: defaultdict(set))
 
         simple_loops = 0
 
-        next_sdxes = defaultdict(list)
         for destination, sdx_info in paths.iteritems():
-            if destination != "other":
-                if sdx_id == sdx_info[1]:
-                    simple_loops += 1
-                    # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
-                else:
-                    next_sdxes[sdx_info].append(destination)
+            if destination == "other":
+                continue
 
-        # init queue for BFS
-        dfs_queue = list()
-        for sdx_info, destinations in next_sdxes.iteritems():
-            next_sdx = sdx_info[1]
             in_participant = sdx_info[0]
+            next_sdx = sdx_info[1]
+
+            if sdx_id == next_sdx:
+                simple_loops += 1
+                # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
+                continue
+
+            # init queue for BFS
+            dfs_queue = list()
 
             # add all next hop sdxes to the queue
-            dfs_queue.append(self.dfs_node(next_sdx, in_participant, destinations, None, 1))
+            dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, None, 1))
+            # count the message
+            unique_messages[next_sdx][sdx_id].add(in_participant)
+            total_num_messages += 1
 
-        # start the traversal of the sdx graph for each next hop sdx
-        unsafe_destinations, num_messages, num_recipients = self.traversal_our_scheme(sdx_id, dfs_queue)
+            # start the traversal of the sdx graph for each next hop sdx
+            safe, msgs, cycle_length = self.traversal_our_scheme(sdx_id, destination, dfs_queue, unique_messages)
+            total_num_messages += msgs
 
-        num_safe_policies = total_num_policies - len(unsafe_destinations)
+            if safe:
+                num_safe_policies += 1
 
-        for destination in paths.keys():
-            if destination not in unsafe_destinations:
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
+            else:
+                total_cycle_length += cycle_length
+                num_cycles += 1
 
-        return total_num_policies, num_safe_policies, num_messages, num_recipients, simple_loops
+                if cycle_length > longest_cycle:
+                    longest_cycle = cycle_length
 
-    def traversal_our_scheme(self, sdx_id, dfs_queue):
+                if cycle_length < shortest_cycle:
+                    shortest_cycle = cycle_length
+
+        num_unique_messages = 0
+        for x in unique_messages.values():
+            for y in x.values():
+                num_unique_messages += len(y)
+
+        return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, \
+               len(unique_messages), total_cycle_length, num_cycles, longest_cycle, shortest_cycle, simple_loops
+
+    def traversal_our_scheme(self, sdx_id, destination, dfs_queue, uniq_msgs):
         num_msgs = 0
-        unsafe_destination = set()
-        sdxes = set()
 
         # start traversal of SDX graph
         while dfs_queue:
             n = dfs_queue.pop()
 
-            num_msgs += 1
-            sdxes.add(n.sdx_id)
+            # get all outgoing paths for the in_participant
+            out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"][n.destination].keys()
+
+            check = list()
 
             hop = n.hop + 1
 
-            next_sdxes = defaultdict(list)
+            # check if best path goes through that SDX and if so, consider it as well
+            if n.destination in self.sdx_participants[n.in_participant]["best"]:
+                out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
 
-            # get all outgoing paths for the in_participant
-            for destination in n.destinations:
-                out_participants = set(self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination].keys())
+                if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
+                    # check if the intial sdx is on the path, if so, a loop is created
+                    if sdx_id == sdx_info[1]:
+                        return False, num_msgs, hop
 
-                # check if best path goes through that SDX and if so, consider it as well
-                if destination in self.sdx_participants[n.in_participant]["best"]:
-                    out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][destination]
-                    if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
-                        out_participants.add(self.sdx_participants[n.in_participant]["best"][destination][0])
+                    dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, None, hop))
+                    num_msgs += 1
+                    check.append((sdx_info[0], sdx_info[1]))
 
-                # check all policy activated paths
-                for participant in out_participants:
-                    if destination in self.sdx_participants[n.in_participant]["all"][participant]:
-                        sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
+                    # count the message
+                    uniq_msgs[sdx_info[1]][n.sdx_id].add(sdx_info[0])
 
-                        # check if the intial sdx is on the path, if so, a loop is created
-                        if sdx_id == sdx_info[1]:
-                            unsafe_destination.add(destination)
-                        else:
-                            next_sdxes[sdx_info].append(destination)
+            # check all policy activated paths
+            for participant in out_participants:
+                # only check it, if it is not the best path
+                if destination in self.sdx_participants[n.in_participant]["all"][participant]:
+                    sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
 
-            for sdx_info, destinations in next_sdxes.iteritems():
-                next_sdx = sdx_info[1]
-                in_participant = sdx_info[0]
+                    # check if the intial sdx is on the path, if so, a loop is created
+                    if sdx_id == sdx_info[1]:
+                        return False, num_msgs, hop
 
-                # add all next hop sdxes to the queue
-                dfs_queue.append(self.dfs_node(next_sdx, in_participant, destinations, None, hop))
+                    if (sdx_info[0], sdx_info[1]) in check:
+                        continue
+                    else:
+                        check.append((sdx_info[0], sdx_info[1]))
+                        dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, None, hop))
 
-        return unsafe_destination, num_msgs, len(sdxes)
+                        # count the message
+                        uniq_msgs[sdx_info[1]][n.sdx_id].add(sdx_info[0])
+                        num_msgs += 1
+        return True, num_msgs, 0
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
         """
@@ -262,89 +317,105 @@ class Evaluator(object):
         paths = self.sdx_participants[from_participant]["all"][to_participant]
         total_num_policies = len(paths) - 1 + paths['other']
         num_safe_policies = paths['other']
+        total_num_messages = 0
+        total_cycle_length = 0
+        num_cycles = 0
+        longest_cycle = 0
+        shortest_cycle = 0
+        unique_messages = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
         simple_loops = 0
 
-        next_sdxes = defaultdict(list)
         for destination, sdx_info in paths.iteritems():
-            if destination != "other":
-                if sdx_id == sdx_info[1]:
-                    simple_loops += 1
-                    # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
-                else:
-                    next_sdxes[sdx_info].append(destination)
+            if destination == "other":
+                continue
 
-        # init queue for BFS
-        dfs_queue = list()
-        for sdx_info, destinations in next_sdxes.iteritems():
-            next_sdx = sdx_info[1]
             in_participant = sdx_info[0]
+            next_sdx = sdx_info[1]
+
+            if sdx_id == next_sdx:
+                simple_loops += 1
+                # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
+                continue
+
+            # init queue
+            dfs_queue = list()
 
             # add all next hop sdxes to the queue
-            dfs_queue.append(self.dfs_node(next_sdx, in_participant, destinations, match, 1))
+            dfs_queue.append(self.dfs_node(sdx_info[1], in_participant, destination, match, 1))
+            # count the message
+            unique_messages[sdx_info[1]][sdx_id][in_participant].add(match)
+            total_num_messages += 1
 
-        # start the traversal of the sdx graph for each next hop sdx
-        unsafe_destinations, num_messages, num_recipients = self.traversal_full_knowledge(sdx_id, dfs_queue)
+            # start the traversal of the sdx graph for each next hop sdx
+            safe, msgs, cycle_length = self.traversal_full_knowledge(sdx_id, destination, dfs_queue, unique_messages)
+            total_num_messages += msgs
 
-        num_safe_policies += len(paths) - 1 - len(unsafe_destinations)
+            if safe:
+                num_safe_policies += 1
 
-        for destination in paths.keys():
-            if destination not in unsafe_destinations:
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
+            else:
+                total_cycle_length += cycle_length
+                num_cycles += 1
 
-        return total_num_policies, num_safe_policies, num_messages, num_recipients, simple_loops
+                if cycle_length > longest_cycle:
+                    longest_cycle = cycle_length
 
-    def traversal_full_knowledge(self, sdx_id, dfs_queue):
+                if cycle_length < shortest_cycle:
+                    shortest_cycle = cycle_length
+
+        num_unique_messages = 0
+        for x in unique_messages.values():
+            for y in x.values():
+                for z in y.values():
+                    num_unique_messages += len(z)
+
+        return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, \
+               len(unique_messages), total_cycle_length, num_cycles, longest_cycle, shortest_cycle, simple_loops
+
+    def traversal_full_knowledge(self, sdx_id, destination, dfs_queue, uniq_msgs):
         num_msgs = 0
-        unsafe_destination = set()
-        sdxes = set()
 
-        # start traversal of SDX graph
+        # start traversal
         while dfs_queue:
             n = dfs_queue.pop()
 
-            num_msgs += 1
-            sdxes.add(n.sdx_id)
-
             hop = n.hop + 1
 
-            next_sdxes = defaultdict(list)
-
             # get all outgoing paths for the in_participant
-            for destination in n.destinations:
-                # add all policy activated paths
-                for out_participant, policies in self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination].iteritems():
-                    if destination in self.sdx_participants[n.in_participant]["all"][out_participant]:
-                        sdx_info = self.sdx_participants[n.in_participant]["all"][out_participant][destination]
+            out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination].keys()
 
-                        # check if the intial sdx is on the path, if so, a loop is created
-                        if sdx_id == sdx_info[1]:
-                            unsafe_destination.add(destination)
-                        else:
-                            for match in policies:
-                                new_match = Evaluator.combine(n.match, match)
-                                if new_match:
-                                    next_sdxes[(sdx_info[0], sdx_info[1], n.match)].append(destination)
+            # check if best path goes through that SDX and if so, consider it as well
+            if n.destination in self.sdx_participants[n.in_participant]["best"]:
+                out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
+                if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
+                    # check if the intial sdx is on the path, if so, a loop is created
+                    if sdx_id == sdx_info[1]:
+                        return False, num_msgs, hop
 
-                # check if best path goes through that SDX and if so, consider it as well
-                if destination in self.sdx_participants[n.in_participant]["best"]:
-                    out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][destination]
-                    if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
-                        if sdx_info[1] == sdx_id:
-                            unsafe_destination.add(destination)
-                        else:
-                            next_sdxes[(sdx_info[0], sdx_info[1], n.match)].append(destination)
+                    dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, n.match, hop))
+                    uniq_msgs[sdx_info[1]][n.sdx_id][sdx_info[0]].add(n.match)
+                    num_msgs += 1
 
-            for sdx_info, destinations in next_sdxes.iteritems():
-                next_sdx = sdx_info[1]
-                in_participant = sdx_info[0]
-                match = sdx_info[2]
+            # check all policy activated paths
+            for participant in out_participants:
+                # only check it, if it is not the best path
+                if destination in self.sdx_participants[n.in_participant]["all"][participant]:
+                    for match in self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination][participant]:
+                        new_match = Evaluator.combine(n.match, match)
+                        if new_match:
+                            sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
+                            # check if the intial sdx is on the path, if so, a loop is created
+                            if sdx_id == sdx_info[1]:
+                                return False, num_msgs, hop
 
-                # add all next hop sdxes to the queue
-                dfs_queue.append(self.dfs_node(next_sdx, in_participant, destinations, match, hop))
+                            dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, new_match, hop))
+                            uniq_msgs[sdx_info[1]][n.sdx_id][sdx_info[0]].add(new_match)
+                            num_msgs += 1
 
-        return unsafe_destination, num_msgs, len(sdxes)
+        return True, num_msgs, 0
 
     @staticmethod
     def combine(match1, match2):
