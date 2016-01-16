@@ -36,8 +36,8 @@ from mpi4py import MPI
 class Evaluator(object):
     def __init__(self, rank, mode, sdx_structure_file, policy_path, start, iterations, output, debug=False):
         self.logger = logging.getLogger("Evaluator")
-        self.start = start
-        self.iterations = iterations
+        self.start = int(start)
+        self.iterations = int(iterations)
         self.rank = rank
 
         if debug:
@@ -66,7 +66,7 @@ class Evaluator(object):
     def run_evaluation(self):
         start = time.clock()
 
-        for j in range(self.start, self.start + self.iterations):
+        for j in range(self.start, int(self.start + self.iterations)):
             # run evaluation
             total_policies = 0
             installed_policies = 0
@@ -451,7 +451,7 @@ def main(argv):
     size = comm.Get_size()
     rank = comm.Get_rank()
 
-    iterations = math.ceil(float(iterations)/float(size))
+    iterations = int(math.ceil(float(iterations)/float(size)))
     start = int(rank*iterations)
     stop = int((rank+1)*iterations)
 
