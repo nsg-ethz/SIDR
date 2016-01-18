@@ -351,7 +351,7 @@ class Evaluator(object):
             in_participant = sdx_info[0]
             next_sdx = sdx_info[1]
 
-            if sdx_id == next_sdx:
+            if sdx_id == next_sdx and from_participant == in_participant:
                 simple_loops += 1
                 # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
                 continue
@@ -366,7 +366,7 @@ class Evaluator(object):
             total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
-            safe, msgs, cycle_length = self.traversal_full_knowledge(sdx_id, destination, dfs_queue, unique_messages)
+            safe, msgs, cycle_length = self.traversal_full_knowledge(sdx_id, from_participant, destination, dfs_queue, unique_messages)
             total_num_messages += msgs
 
             if safe:
@@ -401,7 +401,7 @@ class Evaluator(object):
         return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, num_receivers, \
                num_senders, total_cycle_length, num_cycles, longest_cycle, shortest_cycle, max_hops, simple_loops
 
-    def traversal_full_knowledge(self, sdx_id, destination, dfs_queue, uniq_msgs):
+    def traversal_full_knowledge(self, sdx_id, from_participant, destination, dfs_queue, uniq_msgs):
         num_msgs = 0
         max_hop = 0
 
@@ -421,7 +421,7 @@ class Evaluator(object):
                 out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
                 if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
                     # check if the intial sdx is on the path, if so, a loop is created
-                    if sdx_id == sdx_info[1]:
+                    if sdx_id == sdx_info[1] and from_participant == sdx_info[0]:
                         return False, num_msgs, hop
 
                     dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, n.match, hop))
@@ -437,7 +437,7 @@ class Evaluator(object):
                         if new_match:
                             sdx_info = self.sdx_participants[n.in_participant]["all"][participant][destination]
                             # check if the intial sdx is on the path, if so, a loop is created
-                            if sdx_id == sdx_info[1]:
+                            if sdx_id == sdx_info[1] and from_participant == sdx_info[0]:
                                 return False, num_msgs, hop
 
                             dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, new_match, hop))
