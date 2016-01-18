@@ -38,6 +38,7 @@ class Evaluator(object):
         self.logger = logging.getLogger("Evaluator")
         self.start = int(start)
         self.iterations = int(iterations)
+        self.stop = self.start + self.iterations
         self.rank = rank
 
         if debug:
@@ -66,7 +67,9 @@ class Evaluator(object):
     def run_evaluation(self):
         start = time.clock()
 
-        for j in range(self.start, int(self.start + self.iterations)):
+        self.logger.info("Start: " + str(self.start) + ", Stop: " + str(self.stop))
+
+        for j in range(self.start, self.stop):
             # run evaluation
             total_policies = 0
             installed_policies = 0
@@ -80,6 +83,8 @@ class Evaluator(object):
             shortest_cycle = 10000
             simple_loops = 0
             hops = 0
+
+            self.logger.info("Analyze " + self.policy_path + "policies_" + str(j) + ".log")
 
             with open(self.policy_path + "policies_" + str(j) + ".log", 'r') as policies:
                 i = 0
@@ -485,18 +490,19 @@ def main(argv):
     stop = int((rank+1)*iterations)
 
     print "Init Evaluator"
-    start = time.clock()
+    print "Start: " + str(start) + ", Stop: " + str(stop) + ", Iterations: " + str(iterations) + ", Size: " + str(size) + ", Rank: " + str(rank)
+    start_time = time.clock()
 
     evaluator = Evaluator(rank, int(argv.mode), argv.sdx, argv.policies, start, iterations, argv.output, False)
 
-    print "--> Execution Time: " + str(time.clock() - start) + "s\n"
+    print "--> Execution Time: " + str(time.clock() - start_time) + "s\n"
     print "Evaluate Policies"
     tmp_start = time.clock()
 
     evaluator.run_evaluation()
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
-    print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
+    print "-> Total Execution Time: " + str(time.clock() - start_time) + "s\n"
 
 
 ''' main '''

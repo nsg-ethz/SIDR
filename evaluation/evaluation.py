@@ -179,6 +179,8 @@ class Evaluator(object):
         i = 0
         if self.own_id:
             for destination, sdx_info in paths.iteritems():
+                if destination == 'other':
+                    continue
                 next_sdxes = sdx_info[1]
 
                 next_sdxes.discard(sdx_id)
@@ -460,7 +462,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.own_id, argv.sdx, argv.policies, int(argv.iterations), argv.output, False)
+    evaluator = Evaluator(int(argv.mode), argv.ownid, argv.sdx, argv.policies, int(argv.iterations), argv.output, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
