@@ -52,9 +52,15 @@ class PolicyGenerator(object):
 
                         i = 0
 
+                        max_num_policies = len(fwds)*self.fraction
+                        if self.maximum < max_num_policies:
+                            max_num_policies = self.maximum
+                        num_policies = random.randint(0, max_num_policies)
+
+
                         for fwd in fwds:
                             # stop if we have a policy for half of the eyeballs
-                            if i >= len(fwds)*self.fraction or i >= self.maximum:
+                            if i >= num_policies:
                                 break
 
                             # install between 1 and 4 policies per participant and fwd
