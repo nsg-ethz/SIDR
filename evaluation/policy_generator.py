@@ -14,11 +14,12 @@ from collections import defaultdict
 
 
 class PolicyGenerator(object):
-    def __init__(self, mode, sdx_structure, fraction, output_path, ports_file, iterations):
+    def __init__(self, mode, sdx_structure, fraction, maximum, output_path, ports_file, iterations):
         self.sdx_structure = sdx_structure
         self.output_path = output_path
         self.ports_file = ports_file
         self.fraction = fraction
+        self.maximum = maximum
         self.mode = mode
 
         if mode == 0:
@@ -53,7 +54,7 @@ class PolicyGenerator(object):
 
                         for fwd in fwds:
                             # stop if we have a policy for half of the eyeballs
-                            if i >= len(fwds)*self.fraction:
+                            if i >= len(fwds)*self.fraction or i >= self.maximum:
                                 break
 
                             # install between 1 and 4 policies per participant and fwd
@@ -201,7 +202,7 @@ def main(argv):
     print "Generate Policies"
     tmp_start = time.clock()
 
-    PolicyGenerator(int(argv.mode), sdx_structure, float(argv.fraction), argv.output, argv.ports, int(argv.iterations))
+    PolicyGenerator(int(argv.mode), sdx_structure, float(argv.fraction), int(argv.maximum), argv.output, argv.ports, int(argv.iterations))
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
@@ -215,6 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('sdx', help='path to pickled sdx_structure file')
     parser.add_argument('ports', help='path to ports file')
     parser.add_argument('fraction', help='fraction of outgoing policies')
+    parser.add_argument('maximum', help='maximum of outgoing policies')
     parser.add_argument('output', help='path of output file')
     parser.add_argument('iterations', help='number of iterations')
 
