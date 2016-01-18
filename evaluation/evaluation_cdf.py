@@ -31,7 +31,7 @@ from collections import namedtuple, defaultdict
 
 
 class Evaluator(object):
-    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output_file, messages_file, length_file, debug=False):
+    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output_file, as_messages_file, sdx_messages_file, length_file, debug=False):
         self.logger = logging.getLogger("Evaluator")
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -47,7 +47,8 @@ class Evaluator(object):
 
         self.iterations = iterations
         self.output = output_file
-        self.messages_file = messages_file
+        self.as_messages_file = as_messages_file
+        self.sdx_messages_file = sdx_messages_file
         self.length_file = length_file
         
         with open(self.output, 'w', 102400) as output:
@@ -96,22 +97,24 @@ class Evaluator(object):
                                                                                                  match)
                     else:
                         if self.mode == 1:
-                            tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
-                            tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, \
-                            tmp_hops, tmp_simple_loops = self.install_policy_our_scheme(sdx_id,
-                                                                                           from_participant,
-                                                                                           to_participant,
-                                                                                           match)
+                            tmp_total, tmp_installed, tmp_communication, tmp_unique_as_messages, tmp_unique_sdx_messages,\
+                            tmp_num_recipients, tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, \
+                            tmp_shortest_cycle, tmp_hops, tmp_simple_loops = \
+                                self.install_policy_our_scheme(sdx_id,
+                                                               from_participant,
+                                                               to_participant,
+                                                               match)
                         else:
-                            tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
-                            tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, \
-                            tmp_hops, tmp_simple_loops = self.install_policy_full_knowledge(sdx_id,
-                                                                                               from_participant,
-                                                                                               to_participant,
-                                                                                               match)
+                            tmp_total, tmp_installed, tmp_communication, tmp_unique_as_messages, tmp_unique_sdx_messages,\
+                            tmp_num_recipients, tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, \
+                            tmp_shortest_cycle, tmp_hops, tmp_simple_loops = \
+                                self.install_policy_full_knowledge(sdx_id,
+                                                                   from_participant,
+                                                                   to_participant,
+                                                                   match)
 
                         # communication
-                        unique_messages += tmp_unique_messages
+                        unique_messages += tmp_unique_as_messages
                         recipients += tmp_num_recipients
                         senders += tmp_num_senders
 
@@ -126,8 +129,11 @@ class Evaluator(object):
                         # check
                         simple_loops += tmp_simple_loops
 
-                        with open(self.messages_file, 'a', 102400) as output:
-                            output.write(str(tmp_unique_messages) + "\n")
+                        with open(self.as_messages_file, 'a', 102400) as output:
+                            output.write(str(tmp_unique_as_messages) + "\n")
+
+                        with open(self.sdx_messages_file, 'a', 102400) as output:
+                            output.write(str(tmp_unique_sdx_messages) + "\n")
 
                         with open(self.length_file, 'a', 102400) as output:
                             output.write(str(", ".join([str(x) for x in tmp_hops])) + "\n")
@@ -260,18 +266,21 @@ class Evaluator(object):
                 if cycle_length < shortest_cycle:
                     shortest_cycle = cycle_length
 
-        num_unique_messages = 0
+        num_unique_as_messages = 0
+        num_unique_sdx_messages = 0
         receivers = set()
         for x in unique_messages.values():
+            num_unique_sdx_messages += len(x)
             receivers |= set(x.keys())
             for y in x.values():
-                num_unique_messages += len(y)
+                num_unique_as_messages += len(y)
 
         num_receivers = len(receivers)
         num_senders = len(unique_messages)
 
-        return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, num_receivers,\
-               num_senders, total_cycle_length, num_cycles, longest_cycle, shortest_cycle, max_hops, simple_loops
+        return total_num_policies, num_safe_policies, total_num_messages, num_unique_as_messages, \
+               num_unique_sdx_messages, num_receivers, num_senders, total_cycle_length, num_cycles, longest_cycle, \
+               shortest_cycle, max_hops, simple_loops
 
     def traversal_our_scheme(self, sdx_id, destination, dfs_queue, uniq_msgs):
         num_msgs = 0
@@ -393,19 +402,22 @@ class Evaluator(object):
                 if cycle_length < shortest_cycle:
                     shortest_cycle = cycle_length
 
-        num_unique_messages = 0
+        num_unique_as_messages = 0
+        num_unique_sdx_messages = 0
         receivers = set()
         for x in unique_messages.values():
+            num_unique_sdx_messages += len(x)
             receivers |= set(x.keys())
             for y in x.values():
                 for z in y.values():
-                    num_unique_messages += len(z)
+                    num_unique_as_messages += len(z)
 
         num_receivers = len(receivers)
         num_senders = len(unique_messages)
 
-        return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, num_receivers, \
-               num_senders, total_cycle_length, num_cycles, longest_cycle, shortest_cycle, max_hops, simple_loops
+        return total_num_policies, num_safe_policies, total_num_messages, num_unique_as_messages, \
+               num_unique_sdx_messages, num_receivers, num_senders, total_cycle_length, num_cycles, longest_cycle, \
+               shortest_cycle, max_hops, simple_loops
 
     def traversal_full_knowledge(self, sdx_id, from_participant, destination, dfs_queue, uniq_msgs):
         num_msgs = 0
@@ -477,7 +489,8 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), argv.output, argv.messages, argv.length, False)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), argv.output, argv.asmessages,
+                          argv.sdxmessages, argv.length, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
@@ -498,7 +511,8 @@ if __name__ == '__main__':
     parser.add_argument('policies', help='path to policy files')
     parser.add_argument('iterations', help='number of iterations')
     parser.add_argument('output', help='path of output file')
-    parser.add_argument('messages', help='path of messages output file')
+    parser.add_argument('asmessages', help='path of messages output file')
+    parser.add_argument('sdxmessages', help='path of messages output file')
     parser.add_argument('length', help='path of length output file')
 
     args = parser.parse_args()
