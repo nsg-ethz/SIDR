@@ -42,6 +42,7 @@ def main(argv):
     sdx_participants = dict()
 
     tmp_sdxinfo = dict()
+    tmp_paths = defaultdict(dict)
 
     with open(argv.paths) as infile:
         for line in infile:
@@ -54,8 +55,8 @@ def main(argv):
                 destination = int(x[1])
                 if x[2] == "":
                     continue
-                tmp_paths = x[2].split(";")
-                paths = [p.split(",") for p in tmp_paths]
+                path_strings = x[2].split(";")
+                paths = [p.split(",") for p in path_strings]
 
                 j = 0
                 for path in paths:
@@ -69,13 +70,16 @@ def main(argv):
                                 sdx_participants[in_participant]["all"][out_participant] = dict()
                                 sdx_participants[in_participant]["all"][out_participant]["other"] = 0
 
-                            sdx_info = get_first_sdxes_on_path(participants_2_ixps, path)
+                            if destination in tmp_paths[out_participant]:
+                                sdx_info = tmp_paths[out_participant][destination]
+                            else:
+                                sdx_info = get_first_sdxes_on_path(participants_2_ixps, path)
+                                tmp_sdxinfo[sdx_info] = sdx_info
+                                tmp_paths[out_participant][destination] = tmp_sdxinfo[sdx_info]
+
                             if not sdx_info:
                                 sdx_participants[in_participant]["all"][out_participant]["other"] += 1
                             else:
-                                if sdx_info not in tmp_sdxinfo:
-                                    tmp_sdxinfo[sdx_info] = sdx_info
-
                                 sdx_participants[in_participant]["all"][out_participant][destination] = tmp_sdxinfo[sdx_info]
                                 if j == 0:
                                     sdx_participants[in_participant]["best"][destination] = (out_participant, tmp_sdxinfo[sdx_info])
