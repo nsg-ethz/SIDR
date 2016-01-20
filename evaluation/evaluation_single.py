@@ -128,10 +128,10 @@ class Evaluator(object):
         paths = self.sdx_participants[from_participant]["all"][to_participant]
 
         # check for each destination/prefix separately whether the policy is safe
-        i = len(paths) - 1 + paths['other']
-        j = paths['other']
-
-        return i, j, 0
+        if len(paths) > 1:
+            return 1, 0, 0
+        else:
+            return 1, 1, 0
 
     def install_policy_our_scheme(self, sdx_id, from_participant, to_participant, match):
         """
