@@ -31,7 +31,7 @@ from collections import namedtuple, defaultdict
 
 
 class Evaluator(object):
-    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output_file, as_messages_file, sdx_messages_file, length_file, debug=False):
+    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output_file, as_messages_file, sdx_messages_file, policy_file, length_file, debug=False):
         self.logger = logging.getLogger("Evaluator")
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -50,6 +50,7 @@ class Evaluator(object):
         self.as_messages_file = as_messages_file
         self.sdx_messages_file = sdx_messages_file
         self.length_file = length_file
+        self.policy_file = policy_file
         
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | Safe Policies | Communication Complexity | "
@@ -137,6 +138,10 @@ class Evaluator(object):
 
                         with open(self.length_file, 'a', 102400) as output:
                             output.write(str(", ".join([str(x) for x in tmp_hops])) + "\n")
+
+                    with open(self.policy_file, 'a', 102400) as output:
+                        output.write(str(tmp_installed) + ", " + str(tmp_total) + "\n")
+
 
                     total_policies += tmp_total
                     installed_policies += tmp_installed
@@ -490,7 +495,7 @@ def main(argv):
     start = time.clock()
 
     evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), argv.output, argv.asmessages,
-                          argv.sdxmessages, argv.length, False)
+                          argv.sdxmessages, argv.policycdf, argv.length, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
@@ -513,6 +518,7 @@ if __name__ == '__main__':
     parser.add_argument('output', help='path of output file')
     parser.add_argument('asmessages', help='path of messages output file')
     parser.add_argument('sdxmessages', help='path of messages output file')
+    parser.add_argument('policycdf', help='path of policy output file')
     parser.add_argument('length', help='path of length output file')
 
     args = parser.parse_args()

@@ -31,7 +31,7 @@ from collections import namedtuple, defaultdict
 
 
 class Evaluator(object):
-    def __init__(self, mode, sdx_structure_file, policy_path, iterations, output, debug=False):
+    def __init__(self, mode, sdx_structure_file, policy_path, iterations, start, output, debug=False):
         self.logger = logging.getLogger("Evaluator")
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -46,6 +46,7 @@ class Evaluator(object):
             self.logger.error("invalid mode specified")
 
         self.iterations = iterations
+        self.start = start
         self.output = output
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | Safe Policies | Communication Complexity | "
@@ -60,7 +61,7 @@ class Evaluator(object):
     def run_evaluation(self):
         start = time.clock()
 
-        for j in range(0, self.iterations):
+        for j in range(self.start, self.iterations):
             # run evaluation
             total_policies = 0
             installed_policies = 0
@@ -471,7 +472,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), argv.output, False)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), int(argv.start), argv.output, True)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
@@ -491,6 +492,7 @@ if __name__ == '__main__':
     parser.add_argument('sdx', help='path to pickled sdx_structure file')
     parser.add_argument('policies', help='path to policy files')
     parser.add_argument('iterations', help='number of iterations')
+    parser.add_argument('start', help='iteration to resume at')
     parser.add_argument('output', help='path of output file')
 
     args = parser.parse_args()

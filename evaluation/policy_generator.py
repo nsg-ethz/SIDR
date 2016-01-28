@@ -52,7 +52,7 @@ class PolicyGenerator(object):
 
                         i = 0
 
-                        max_num_policies = len(fwds)*self.fraction
+                        max_num_policies = int(len(fwds)*self.fraction)
                         if self.maximum < max_num_policies:
                             max_num_policies = self.maximum
                         num_policies = random.randint(0, max_num_policies)

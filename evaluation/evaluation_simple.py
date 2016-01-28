@@ -56,6 +56,8 @@ class Evaluator(object):
         self.dfs_node = namedtuple("DFSNode", "sdx_id in_participant destination match")
 
     def run_evaluation(self):
+        self.logger.info("Start Evaluation")
+
         start = time.clock()
 
         for j in range(0, self.iterations):
@@ -67,6 +69,9 @@ class Evaluator(object):
                 i = 0
                 for policy in policies:
                     i += 1
+
+                    if i % 1000 == 0:
+                        self.logger.info("Policy: " + str(i))
 
                     x = policy.split("\n")[0].split("|")
                     sdx_id = int(x[0])
