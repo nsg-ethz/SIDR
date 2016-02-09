@@ -97,16 +97,16 @@ class Evaluator(object):
                             tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
                             tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, \
                             tmp_hops, tmp_simple_loops = self.install_policy_our_scheme(sdx_id,
-                                                                                           from_participant,
-                                                                                           to_participant,
-                                                                                           match)
+                                                                                        from_participant,
+                                                                                        to_participant,
+                                                                                        match)
                         else:
                             tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
                             tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, \
                             tmp_hops, tmp_simple_loops = self.install_policy_full_knowledge(sdx_id,
-                                                                                               from_participant,
-                                                                                               to_participant,
-                                                                                               match)
+                                                                                            from_participant,
+                                                                                            to_participant,
+                                                                                            match)
 
                         # communication
                         unique_messages += tmp_unique_messages
@@ -361,9 +361,9 @@ class Evaluator(object):
             dfs_queue = list()
 
             # add all next hop sdxes to the queue
-            dfs_queue.append(self.dfs_node(sdx_info[1], in_participant, destination, match, 1))
+            dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1))
             # count the message
-            unique_messages[sdx_info[1]][sdx_id][in_participant].add(match)
+            unique_messages[next_sdx][sdx_id][in_participant].add(match)
             total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
@@ -418,8 +418,8 @@ class Evaluator(object):
             out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"][destination].keys()
 
             # check if best path goes through that SDX and if so, consider it as well
-            if n.destination in self.sdx_participants[n.in_participant]["best"]:
-                out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][n.destination]
+            if destination in self.sdx_participants[n.in_participant]["best"]:
+                out_participant, sdx_info = self.sdx_participants[n.in_participant]["best"][destination]
                 if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
                     # check if the intial sdx is on the path, if so, a loop is created
                     if sdx_id == sdx_info[1] and from_participant == sdx_info[0]:
@@ -428,6 +428,9 @@ class Evaluator(object):
                     dfs_queue.append(self.dfs_node(sdx_info[1], sdx_info[0], destination, n.match, hop))
                     uniq_msgs[sdx_info[1]][n.sdx_id][sdx_info[0]].add(n.match)
                     num_msgs += 1
+
+                    if out_participant in out_participants:
+                        out_participants.remove(out_participant)
 
             # check all policy activated paths
             for participant in out_participants:
