@@ -174,6 +174,9 @@ class HeaderBitString(object):
 
         return match_set
 
+    def get_match_int(self):
+        return self.header
+
 
 def test():
     test_cases = [

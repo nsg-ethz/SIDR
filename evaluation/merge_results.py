@@ -28,22 +28,26 @@ def main(argv):
                     results[i-1]["total"] = int(x[0])
                     results[i-1]["bgp_only"] = dict()
                     results[i-1]["bgp_only"]["safe"] = int(x[1])
-                    results[i-1]["bgp_only"]["num_msgs"] = int(x[2])
+                    results[i-1]["bgp_only"]["num_msgs"] = int(x[3])
                     results[i-1]["bgp_only"]["frac1"] = float(x[1])/float(x[0])
                 elif j == 1:
                     if results[i-1]["total"] != int(x[0]):
                         print "Error: Total doesn't match " + str(i) + "/" + str(j)
                     results[i-1]["our_scheme"] = dict()
                     results[i-1]["our_scheme"]["safe"] = int(x[1])
-                    results[i-1]["our_scheme"]["num_msgs"] = int(x[2])
                     results[i-1]["our_scheme"]["frac1"] = float(x[1])/float(x[0])
+                    results[i-1]["our_scheme"]["num_msgs"] = int(x[3])
+                    results[i-1]["our_scheme"]["msgs_per_node"] = float(x[4])
+                    results[i-1]["our_scheme"]["cycle"] = float(x[7])
                 elif j == 2:
                     if results[i-1]["total"] != int(x[0]):
                         print "Error: Total doesn't match " + str(i) + "/" + str(j)
                     results[i-1]["full_knowledge"] = dict()
                     results[i-1]["full_knowledge"]["safe"] = int(x[1])
-                    results[i-1]["full_knowledge"]["num_msgs"] = int(x[2])
                     results[i-1]["full_knowledge"]["frac1"] = float(x[1])/float(x[0])
+                    results[i-1]["full_knowledge"]["num_msgs"] = int(x[3])
+                    results[i-1]["full_knowledge"]["msgs_per_node"] = float(x[4])
+                    results[i-1]["full_knowledge"]["cycle"] = float(x[7])
                 i += 1
         j += 1
 
@@ -55,8 +59,6 @@ def main(argv):
         results[k]["full_knowledge"]["frac2"] = float(results[k]["full_knowledge"]["safe"]) / \
                                                   float(results[k]["full_knowledge"]["safe"])
 
-        results[k]["bgp_only"]["frac_msgs"] = float(results[k]["bgp_only"]["num_msgs"]) / \
-                                              float(results[k]["full_knowledge"]["safe"])
         results[k]["our_scheme"]["frac_msgs"] = float(results[k]["our_scheme"]["num_msgs"]) / \
                                                 float(results[k]["full_knowledge"]["safe"])
         results[k]["full_knowledge"]["frac_msgs"] = float(results[k]["full_knowledge"]["num_msgs"]) / \

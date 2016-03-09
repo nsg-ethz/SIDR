@@ -17,8 +17,9 @@ def main(argv):
 
     total = defaultdict(list)
     safe = defaultdict(list)
-    communication = defaultdict(list)
     messages = defaultdict(list)
+    msgs_per_node = defaultdict(list)
+    cycles = defaultdict(list)
 
     titles = ["Local BGP", "Our Scheme", "Full Knowledge"]
 
@@ -27,38 +28,42 @@ def main(argv):
             data = json.loads(infile.read())
 
             # means
-            tmp_comm = [0, 0, 0]
             tmp_safe = [0, 0, 0]
             tmp_total = [0, 0, 0]
             tmp_msgs = [0, 0]
+            tmp_msgs_per_node = [0, 0]
+            tmp_cycle = [0, 0]
+
             for data_point in data.values():
-                tmp_comm[0] += data_point["bgp_only"]["num_msgs"]
                 tmp_safe[0] += data_point["bgp_only"]["frac2"]
                 tmp_total[0] += data_point["bgp_only"]["frac1"]
 
-                tmp_comm[1] += data_point["our_scheme"]["num_msgs"]
                 tmp_safe[1] += data_point["our_scheme"]["frac2"]
                 tmp_total[1] += data_point["our_scheme"]["frac1"]
                 tmp_msgs[0] += data_point["our_scheme"]["frac_msgs"]
+                tmp_msgs_per_node[0] += data_point["our_scheme"]["msgs_per_node"]
+                tmp_cycle[0] += data_point["our_scheme"]["cycle"]
 
-                tmp_comm[2] += data_point["full_knowledge"]["num_msgs"]
                 tmp_safe[2] += data_point["full_knowledge"]["frac2"]
                 tmp_total[2] += data_point["full_knowledge"]["frac1"]
                 tmp_msgs[1] += data_point["full_knowledge"]["frac_msgs"]
+                tmp_msgs_per_node[1] += data_point["full_knowledge"]["msgs_per_node"]
+                tmp_cycle[1] += data_point["full_knowledge"]["cycle"]
 
             total[0].append(tmp_total[0]/len(data))
             safe[0].append(tmp_safe[0]/len(data))
-            communication[0].append(tmp_comm[0]/len(data))
 
             total[1].append(tmp_total[1]/len(data))
             safe[1].append(tmp_safe[1]/len(data))
-            communication[1].append(tmp_comm[1]/len(data))
             messages[0].append(tmp_msgs[0]/len(data))
+            msgs_per_node[0].append(tmp_msgs_per_node[0]/len(data))
+            cycles[0].append(tmp_cycle[0]/len(data))
 
             total[2].append(tmp_total[2]/len(data))
             safe[2].append(tmp_safe[2]/len(data))
-            communication[2].append(tmp_comm[2]/len(data))
             messages[1].append(tmp_msgs[1]/len(data))
+            msgs_per_node[1].append(tmp_msgs_per_node[1]/len(data))
+            cycles[1].append(tmp_cycle[1]/len(data))
 
     # safe
     fig, ax = plt.subplots()
@@ -126,7 +131,7 @@ def main(argv):
 
     i = 1
     for tmp_means in messages.values():
-        rects.append(ax.bar(ind + i*width, tmp_means, width, color=color[i-1]))
+        rects.append(ax.bar(ind + i*width, tmp_means, width, color=color[i]))
         i += 1
 
     # add some text for labels, title and axes ticks
@@ -139,9 +144,63 @@ def main(argv):
     plt.xlim((0, 4.25))
 
     plots = [x[0] for x in rects]
-    ax.legend(plots, titles, loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.legend(plots, titles[1:], loc='center left', bbox_to_anchor=(1, 0.5))
 
     plt.savefig('communication.pdf', bbox_inches='tight')
+
+    # received messages
+    fig, ax = plt.subplots()
+    ind = np.arange(4)
+    width = 0.25
+
+    rects = list()
+    color = ['r', 'gold', 'c', 'b']
+
+    i = 1
+    for tmp_means in msgs_per_node.values():
+        rects.append(ax.bar(ind + i*width, tmp_means, width, color=color[i]))
+        i += 1
+
+    # add some text for labels, title and axes ticks
+    ax.set_ylabel('Number of Received Messages')
+    ax.set_xlabel('Number of Destinations')
+    ax.set_title('Number of Received Messaages per Node per Policy Installation')
+    ax.set_xticks(ind + ((i+1)*width/2))
+    ax.set_xticklabels(('500', '1000', '5000', '10000'))
+
+    plt.xlim((0, 4.25))
+
+    plots = [x[0] for x in rects]
+    ax.legend(plots, titles[1:], loc='center left', bbox_to_anchor=(1, 0.5))
+
+    plt.savefig('messagespernode.pdf', bbox_inches='tight')
+
+    # length of cycles
+    fig, ax = plt.subplots()
+    ind = np.arange(4)
+    width = 0.25
+
+    rects = list()
+    color = ['r', 'gold', 'c', 'b']
+
+    i = 1
+    for tmp_means in cycles.values():
+        rects.append(ax.bar(ind + i*width, tmp_means, width, color=color[i]))
+        i += 1
+
+    # add some text for labels, title and axes ticks
+    ax.set_ylabel('Number of SDXes')
+    ax.set_xlabel('Number of Destinations')
+    ax.set_title('Number of SDXes on a Loop')
+    ax.set_xticks(ind + ((i+1)*width/2))
+    ax.set_xticklabels(('500', '1000', '5000', '10000'))
+
+    plt.xlim((0, 4.25))
+
+    plots = [x[0] for x in rects]
+    ax.legend(plots, titles[1:], loc='center left', bbox_to_anchor=(1, 0.5))
+
+    plt.savefig('loops.pdf', bbox_inches='tight')
 
 ''' main '''
 if __name__ == '__main__':

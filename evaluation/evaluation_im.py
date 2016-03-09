@@ -49,32 +49,36 @@ class Evaluator(object):
         self.start = start
         self.output = output
         with open(self.output, 'w', 102400) as output:
-            output.write("Total Submitted Policies | Safe Policies | Communication Complexity | "
-                         "Reduced Number of Messages | Number of Messages Received | Longest Cycle | Shortest Cycle | "
-                         "Average Cycle Length | Simple Loops \n")
+            output.write("Total Submitted Policies | "
+                         "Safe Policies | "
+                         "Simple Loops \n")
 
         with open(sdx_structure_file, 'r') as sdx_input:
             self.sdx_structure, self.sdx_participants = pickle.load(sdx_input)
 
-        self.dfs_node = namedtuple("DFSNode", "sdx_id in_participant destination match hop")
+        self.dfs_node = namedtuple("DFSNode", "sdx_id in_participant destination match hop path")
 
     def run_evaluation(self):
         start = time.clock()
 
         for j in range(self.start, self.iterations):
-            # run evaluation
+            # policy stats
             total_policies = 0
             installed_policies = 0
+
+            # communication stats
             communication_complexity = 0
             unique_messages = 0
             recipients = 0
             senders = 0
+            hops = 0
+
+            # cycle stats
             num_cycles = 0
             total_cycle_length = 0
             longest_cycle = 0
             shortest_cycle = 10000
             simple_loops = 0
-            hops = 0
 
             with open(self.policy_path + "policies_" + str(j) + ".log", 'r') as policies:
                 i = 0
