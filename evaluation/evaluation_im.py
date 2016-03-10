@@ -47,7 +47,7 @@ class Evaluator(object):
 
         self.iterations = iterations
         self.start = start
-        self.output = output
+        self.output = output + "evaluation_" + str(mode) + ".log"
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | "
                          "Safe Policies | "
