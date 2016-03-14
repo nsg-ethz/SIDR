@@ -262,6 +262,10 @@ class Evaluator(object):
                 if cycle_length < shortest_cycle:
                     shortest_cycle = cycle_length
 
+        # subtract all policies which go directly to same IXP again. We just treat all of those paths as if
+        # they didn't exist.
+        total_num_policies -= simple_loops
+
         num_unique_messages = 0
         receivers = set()
         for x in unique_messages.values():
@@ -309,12 +313,14 @@ class Evaluator(object):
                     if sdx_id == next_sdx:
                         return False, num_msgs, hop
 
-                    dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
-                    num_msgs += 1
-                    check.append((in_participant, next_sdx))
+                    # treat paths that go through the same sdx as if they didn't exist
+                    if next_sdx != n.sdx_id:
+                        dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
+                        num_msgs += 1
+                        check.append((in_participant, next_sdx))
 
-                    # count the message
-                    uniq_msgs[next_sdx][n.sdx_id].add(in_participant)
+                        # count the message
+                        uniq_msgs[next_sdx][n.sdx_id].add(in_participant)
 
             # check all policy activated paths
             for participant in out_participants:
@@ -329,15 +335,17 @@ class Evaluator(object):
                     if sdx_id == next_sdx:
                         return False, num_msgs, hop
 
-                    if (in_participant, next_sdx) in check:
-                        continue
-                    else:
-                        check.append((in_participant, next_sdx))
-                        dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
+                    # treat paths that go through the same sdx as if they didn't exist
+                    if next_sdx != n.sdx_id:
+                        if (in_participant, next_sdx) in check:
+                            continue
+                        else:
+                            check.append((in_participant, next_sdx))
+                            dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
 
-                        # count the message
-                        uniq_msgs[next_sdx][n.sdx_id].add(in_participant)
-                        num_msgs += 1
+                            # count the message
+                            uniq_msgs[next_sdx][n.sdx_id].add(in_participant)
+                            num_msgs += 1
         return True, num_msgs, max_hop
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
@@ -371,8 +379,11 @@ class Evaluator(object):
             in_participant = sdx_info[0]
             next_sdx = sdx_info[1]
 
-            if sdx_id == next_sdx and from_participant == in_participant:
+            if sdx_id == next_sdx:
                 simple_loops += 1
+                if from_participant == in_participant:
+                    self.logger.info("True Simple Loop")
+                    continue
                 # in case we see the sdx_id of the sdx that wants to install the policy, we skip the policy
                 continue
 
@@ -407,6 +418,8 @@ class Evaluator(object):
 
                 if cycle_length < shortest_cycle:
                     shortest_cycle = cycle_length
+
+        total_num_policies -= simple_loops
 
         num_unique_messages = 0
         receivers = set()
@@ -454,12 +467,14 @@ class Evaluator(object):
                     if sdx_id == next_sdx and from_participant == in_participant:
                         return False, num_msgs, hop
 
-                    dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop))
-                    uniq_msgs[next_sdx][n.sdx_id][in_participant].add(n.match)
-                    num_msgs += 1
+                    # treat paths that go through the same sdx as if they didn't exist
+                    if next_sdx != n.sdx_id:
+                        dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop))
+                        uniq_msgs[next_sdx][n.sdx_id][in_participant].add(n.match)
+                        num_msgs += 1
 
-                    if out_participant in out_participants:
-                        out_participants.remove(out_participant)
+                        if out_participant in out_participants:
+                            out_participants.remove(out_participant)
 
             # check all policy activated paths
             for participant in out_participants:
@@ -477,9 +492,11 @@ class Evaluator(object):
                             if sdx_id == next_sdx and from_participant == in_participant:
                                 return False, num_msgs, hop
 
-                            dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, new_match, hop))
-                            uniq_msgs[next_sdx][n.sdx_id][in_participant].add(new_match)
-                            num_msgs += 1
+                            # treat paths that go through the same sdx as if they didn't exist
+                            if next_sdx != n.sdx_id:
+                                dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, new_match, hop))
+                                uniq_msgs[next_sdx][n.sdx_id][in_participant].add(new_match)
+                                num_msgs += 1
 
         return True, num_msgs, max_hop
 
