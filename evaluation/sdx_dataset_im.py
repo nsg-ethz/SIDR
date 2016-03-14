@@ -39,6 +39,9 @@ def main(argv):
     print "Build sdx_participants"
     tmp_start = time.clock()
 
+    # maximum number of paths an AS is allowed to have to a single destination
+    max_num_paths = int(argv.max_num_paths)
+
     # actual structures that contain the data
     sdx_structure = dict()
     sdx_participants = dict()
@@ -74,6 +77,8 @@ def main(argv):
 
                 j = 0
                 for path in paths:
+                    if j == max_num_paths:
+                        break
                     # convert string paths to ints
                     for i in range(0, len(path)):
                         path[i] = int(path[i])
@@ -186,6 +191,7 @@ if __name__ == '__main__':
     parser.add_argument('paths', help='path to paths file')
     parser.add_argument('ixps', help='path to ixp file')
     parser.add_argument('output', help='path of output file')
+    parser.add_argument('max_num_paths', help='maximum number of paths an AS has to a single destination')
 
     args = parser.parse_args()
 
