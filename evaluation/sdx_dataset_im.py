@@ -158,6 +158,8 @@ def main(argv):
 def get_first_sdxes_on_path(mode, participants_2_ixps, as_path):
     sdxes = set()
 
+    mode = int(mode)
+
     as2 = -1
     for as1 in as_path:
         if as2 != -1:

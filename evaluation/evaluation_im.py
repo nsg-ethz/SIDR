@@ -298,7 +298,8 @@ class Evaluator(object):
 
             sdx_path = list(n.sdx_path)
             if n.sdx_id in sdx_path:
-                self.logger.debug("SDX Loop: " + ",".join(sdx_path) + "," + str(n.sdx_id) + " - policy at " + str(sdx_id))
+                self.logger.debug("SDX Loop: " + ",".join([str(x) for x in sdx_path]) + "," +
+                                  str(n.sdx_id) + " - policy at " + str(sdx_id))
             sdx_path.append(n.sdx_id)
 
             # check if best path goes through that SDX and if so, consider it as well
@@ -392,7 +393,7 @@ class Evaluator(object):
             sdx_path = [(from_participant, sdx_id)]
 
             # add all next hop sdxes to the queue
-            dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1))
+            dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1, sdx_path))
             # count the message
             unique_messages[next_sdx][sdx_id][in_participant].add(match)
             total_num_messages += 1
@@ -449,7 +450,8 @@ class Evaluator(object):
 
             sdx_path = list(n.sdx_path)
             if (n.in_participant, n.sdx_id) in sdx_path:
-                self.logger.debug("SDX Loop: " + ",".join(sdx_path) + "," + str((n.in_participant, n.sdx_id)) + " - policy at " + str(sdx_id))
+                self.logger.debug("SDX Loop: " + ",".join([str(x) for x in sdx_path]) + "," +
+                                  str((n.in_participant, n.sdx_id)) + " - policy at " + str(sdx_id))
             sdx_path.append((n.in_participant, n.sdx_id))
 
             # get all outgoing paths for the in_participant
@@ -469,7 +471,7 @@ class Evaluator(object):
 
                     # treat paths that go through the same sdx as if they didn't exist
                     if next_sdx != n.sdx_id:
-                        dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop))
+                        dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop, sdx_path))
                         uniq_msgs[next_sdx][n.sdx_id][in_participant].add(n.match)
                         num_msgs += 1
 
@@ -494,7 +496,12 @@ class Evaluator(object):
 
                             # treat paths that go through the same sdx as if they didn't exist
                             if next_sdx != n.sdx_id:
-                                dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, new_match, hop))
+                                dfs_queue.append(self.dfs_node(next_sdx,
+                                                               in_participant,
+                                                               n.destination,
+                                                               new_match,
+                                                               hop,
+                                                               sdx_path))
                                 uniq_msgs[next_sdx][n.sdx_id][in_participant].add(new_match)
                                 num_msgs += 1
 
