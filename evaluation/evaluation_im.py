@@ -310,12 +310,14 @@ class Evaluator(object):
                 next_sdx = sdx_info[1]
 
                 if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
-                    # check if the intial sdx is on the path, if so, a loop is created
-                    if sdx_id == next_sdx:
-                        return False, num_msgs, hop
-
                     # treat paths that go through the same sdx as if they didn't exist
                     if next_sdx != n.sdx_id:
+
+                        # check if the intial sdx is on the path, if so, a loop is created
+                        if sdx_id == next_sdx:
+                            return False, num_msgs, hop
+
+
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
                         num_msgs += 1
                         check.append((in_participant, next_sdx))
@@ -332,12 +334,13 @@ class Evaluator(object):
                     in_participant = sdx_info[0]
                     next_sdx = sdx_info[1]
 
-                    # check if the intial sdx is on the path, if so, a loop is created
-                    if sdx_id == next_sdx:
-                        return False, num_msgs, hop
-
                     # treat paths that go through the same sdx as if they didn't exist
                     if next_sdx != n.sdx_id:
+
+                        # check if the intial sdx is on the path, if so, a loop is created
+                        if sdx_id == next_sdx:
+                            return False, num_msgs, hop
+
                         if (in_participant, next_sdx) in check:
                             continue
                         else:
@@ -465,12 +468,13 @@ class Evaluator(object):
                 next_sdx = sdx_info[1]
 
                 if out_participant in self.sdx_structure[n.sdx_id][n.in_participant]["out_participants"]:
-                    # check if the intial sdx is on the path, if so, a loop is created
-                    if sdx_id == next_sdx and from_participant == in_participant:
-                        return False, num_msgs, hop
-
                     # treat paths that go through the same sdx as if they didn't exist
                     if next_sdx != n.sdx_id:
+
+                        # check if the intial sdx is on the path, if so, a loop is created
+                        if sdx_id == next_sdx and from_participant == in_participant:
+                            return False, num_msgs, hop
+
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop, sdx_path))
                         uniq_msgs[next_sdx][n.sdx_id][in_participant].add(n.match)
                         num_msgs += 1
@@ -490,12 +494,13 @@ class Evaluator(object):
                             in_participant = sdx_info[0]
                             next_sdx = sdx_info[1]
 
-                            # check if the intial sdx is on the path, if so, a loop is created
-                            if sdx_id == next_sdx and from_participant == in_participant:
-                                return False, num_msgs, hop
-
                             # treat paths that go through the same sdx as if they didn't exist
                             if next_sdx != n.sdx_id:
+
+                                # check if the intial sdx is on the path, if so, a loop is created
+                                if sdx_id == next_sdx and from_participant == in_participant:
+                                    return False, num_msgs, hop
+
                                 dfs_queue.append(self.dfs_node(next_sdx,
                                                                in_participant,
                                                                n.destination,
