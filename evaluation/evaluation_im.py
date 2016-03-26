@@ -48,6 +48,10 @@ class Evaluator(object):
         self.iterations = iterations
         self.start = start
         self.output = output + "evaluation_" + str(mode) + ".log"
+        self.messages_received = output + "messages_received_" + str(mode) + ".log"
+        self.messages_sent = output + "messages_sent_" + str(mode) + ".log"
+        self.max_hops = output + "max_hops_" + str(mode) + ".log"
+
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | "
                          "Safe Policies | "
@@ -99,18 +103,20 @@ class Evaluator(object):
                     else:
                         if self.mode == 1:
                             tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
-                            tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, \
-                            tmp_hops, tmp_simple_loops = self.install_policy_our_scheme(sdx_id,
-                                                                                        from_participant,
-                                                                                        to_participant,
-                                                                                        match)
+                            tmp_num_senders, tmp_sent_messages, tmp_received_messages, tmp_cycle_length, tmp_num_cycles,\
+                            tmp_longest_cycle, tmp_shortest_cycle, tmp_hops, tmp_simple_loops = \
+                                self.install_policy_our_scheme(sdx_id,
+                                                               from_participant,
+                                                               to_participant,
+                                                               match)
                         else:
                             tmp_total, tmp_installed, tmp_communication, tmp_unique_messages, tmp_num_recipients, \
-                            tmp_num_senders, tmp_cycle_length, tmp_num_cycles, tmp_longest_cycle, tmp_shortest_cycle, \
-                            tmp_hops, tmp_simple_loops = self.install_policy_full_knowledge(sdx_id,
-                                                                                            from_participant,
-                                                                                            to_participant,
-                                                                                            match)
+                            tmp_num_senders, tmp_sent_messages, tmp_received_messages, tmp_cycle_length, tmp_num_cycles,\
+                            tmp_longest_cycle, tmp_shortest_cycle, tmp_hops, tmp_simple_loops = \
+                                self.install_policy_full_knowledge(sdx_id,
+                                                                   from_participant,
+                                                                   to_participant,
+                                                                   match)
 
                         # communication
                         unique_messages += tmp_unique_messages
@@ -130,6 +136,17 @@ class Evaluator(object):
 
                         # check
                         simple_loops += tmp_simple_loops
+
+                        # store results
+                        with open(self.messages_sent, 'a', 102400) as output:
+                            output.write(",".join([str(x) for x in tmp_sent_messages]))
+
+
+                        with open(self.messages_received, 'a', 102400) as output:
+                            output.write(",".join([str(x) for x in tmp_received_messages]))
+
+                        with open(self.max_hops, 'a', 102400) as output:
+                            output.write(str(tmp_hops) + "\n")
 
                     total_policies += tmp_total
                     installed_policies += tmp_installed
@@ -267,17 +284,28 @@ class Evaluator(object):
         total_num_policies -= simple_loops
 
         num_unique_messages = 0
-        receivers = set()
-        for x in unique_messages.values():
-            receivers |= set(x.keys())
-            for y in x.values():
-                num_unique_messages += len(y)
+        receiver_set = set()
+        receivers = defaultdict(set)
 
-        num_receivers = len(receivers)
+        sent_messages = list()
+        received_messages = list()
+
+        for key, values in unique_messages.iteritems():
+            receiver_set |= set(values.keys())
+            sent_messages.append(len(values))
+            for y in values.values():
+                num_unique_messages += len(y)
+                receivers[key].add(y)
+
+        for value in receivers.values():
+            received_messages.append(len(value))
+
+        num_receivers = len(receiver_set)
         num_senders = len(unique_messages)
 
         return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, num_receivers,\
-               num_senders, total_cycle_length, num_cycles, longest_cycle, shortest_cycle, max_hops, simple_loops
+               num_senders, sent_messages, received_messages, total_cycle_length, num_cycles, longest_cycle, \
+               shortest_cycle, max_hops, simple_loops
 
     def traversal_our_scheme(self, sdx_id, dfs_queue, uniq_msgs):
         num_msgs = 0
@@ -372,7 +400,7 @@ class Evaluator(object):
         num_cycles = 0
         longest_cycle = 0
         shortest_cycle = 0
-        unique_messages = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+        unique_messages = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         simple_loops = 0
         max_hops = 0
 
@@ -398,7 +426,7 @@ class Evaluator(object):
             # add all next hop sdxes to the queue
             dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1, sdx_path))
             # count the message
-            unique_messages[next_sdx][sdx_id][in_participant].add(match)
+            unique_messages[next_sdx][sdx_id][in_participant] += 1
             total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
@@ -426,18 +454,35 @@ class Evaluator(object):
         total_num_policies -= simple_loops
 
         num_unique_messages = 0
-        receivers = set()
-        for x in unique_messages.values():
-            receivers |= set(x.keys())
-            for y in x.values():
+        receiver_set = set()
+
+        sent_messages = list()
+        received_messages = list()
+        receivers = defaultdict(int)
+
+        for key, values in unique_messages.iteritems():
+            receiver_set |= set(values.keys())
+            num_messages = 0
+            for y in values.values():
+                max_messages = 0
                 for z in y.values():
-                    num_unique_messages += len(z)
+                    num_unique_messages += z
+                    if z > max_messages:
+                        max_messages = z
+                num_messages += max_messages
+                receivers[y] += max_messages
+
+            sent_messages.append(len(num_messages))
+
+        received_messages = receivers.values()
+
 
         num_receivers = len(receivers)
         num_senders = len(unique_messages)
 
         return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, num_receivers, \
-               num_senders, total_cycle_length, num_cycles, longest_cycle, shortest_cycle, max_hops, simple_loops
+               num_senders, sent_messages, received_messages, total_cycle_length, num_cycles, longest_cycle, \
+               shortest_cycle, max_hops, simple_loops
 
     def traversal_full_knowledge(self, sdx_id, from_participant, dfs_queue, uniq_msgs):
         num_msgs = 0
@@ -476,7 +521,7 @@ class Evaluator(object):
                             return False, num_msgs, hop
 
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop, sdx_path))
-                        uniq_msgs[next_sdx][n.sdx_id][in_participant].add(n.match)
+                        uniq_msgs[next_sdx][n.sdx_id][in_participant] += 1
                         num_msgs += 1
 
                         if out_participant in out_participants:
@@ -507,7 +552,7 @@ class Evaluator(object):
                                                                new_match,
                                                                hop,
                                                                sdx_path))
-                                uniq_msgs[next_sdx][n.sdx_id][in_participant].add(new_match)
+                                uniq_msgs[next_sdx][n.sdx_id][in_participant] += 1
                                 num_msgs += 1
 
         return True, num_msgs, max_hop
