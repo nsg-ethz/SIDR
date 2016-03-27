@@ -266,7 +266,8 @@ class Evaluator(object):
 
             if safe:
                 num_safe_policies += 1
-                max_hops += cycle_length
+                if cycle_length > max_hops:
+                    max_hops = cycle_length
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
@@ -435,7 +436,8 @@ class Evaluator(object):
             if safe:
                 num_safe_policies += 1
 
-                max_hops += cycle_length
+                if cycle_length > max_hops:
+                    max_hops = cycle_length
 
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
