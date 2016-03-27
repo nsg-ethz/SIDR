@@ -231,7 +231,7 @@ class Evaluator(object):
         num_cycles = 0
         longest_cycle = 0
         shortest_cycle = 100000
-        unique_messages = defaultdict(lambda: defaultdict(set))
+        unique_messages = {"senders": defaultdict(set), "receicers": defaultdict(set)}
         max_hops = 0
 
         simple_loops = 0
@@ -256,7 +256,8 @@ class Evaluator(object):
             dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, None, 1, sdx_path))
 
             # count the message
-            unique_messages[next_sdx][sdx_id].add(in_participant)
+            unique_messages["senders"][sdx_id].add((next_sdx, in_participant))
+            unique_messages["receivers"][next_sdx].add((sdx_id, in_participant))
             total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
@@ -285,20 +286,14 @@ class Evaluator(object):
 
         num_unique_messages = 0
         receiver_set = set()
-        receivers = defaultdict(set)
 
-        sent_messages = list()
-        received_messages = list()
+        sent_messages = [len(x) for x in unique_messages["senders"].values()]
+        received_messages = [len(x) for x in unique_messages["receivers"].values()]
 
         for key, values in unique_messages.iteritems():
             receiver_set |= set(values.keys())
-            sent_messages.append(len(values))
             for y in values.values():
                 num_unique_messages += len(y)
-                receivers[key].add(y)
-
-        for value in receivers.values():
-            received_messages.append(len(value))
 
         num_receivers = len(receiver_set)
         num_senders = len(unique_messages)
@@ -351,7 +346,9 @@ class Evaluator(object):
                         check.append((in_participant, next_sdx))
 
                         # count the message
-                        uniq_msgs[next_sdx][n.sdx_id].add(in_participant)
+                        uniq_msgs["senders"][n.sdx_id].add((next_sdx, in_participant))
+                        uniq_msgs["receivers"][next_sdx].add((n.sdx_id, in_participant))
+
 
             # check all policy activated paths
             for participant in out_participants:
@@ -376,7 +373,8 @@ class Evaluator(object):
                             dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
 
                             # count the message
-                            uniq_msgs[next_sdx][n.sdx_id].add(in_participant)
+                            uniq_msgs["senders"][n.sdx_id].add((next_sdx, in_participant))
+                            uniq_msgs["receivers"][next_sdx].add((n.sdx_id, in_participant))
                             num_msgs += 1
         return True, num_msgs, max_hop
 
@@ -426,7 +424,8 @@ class Evaluator(object):
             # add all next hop sdxes to the queue
             dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1, sdx_path))
             # count the message
-            unique_messages[next_sdx][sdx_id][in_participant] += 1
+            unique_messages["senders"][sdx_id].add((next_sdx, in_participant, match))
+            unique_messages["receivers"][next_sdx].add((sdx_id, in_participant, match))
             total_num_messages += 1
 
             # start the traversal of the sdx graph for each next hop sdx
@@ -456,28 +455,16 @@ class Evaluator(object):
         num_unique_messages = 0
         receiver_set = set()
 
-        sent_messages = list()
-        received_messages = list()
-        receivers = defaultdict(int)
+        sent_messages = [len(x) for x in unique_messages["senders"].values()]
+        received_messages = [len(x) for x in unique_messages["receivers"].values()]
 
         for key, values in unique_messages.iteritems():
             receiver_set |= set(values.keys())
-            num_messages = 0
             for y in values.values():
-                max_messages = 0
                 for z in y.values():
                     num_unique_messages += z
-                    if z > max_messages:
-                        max_messages = z
-                num_messages += max_messages
-                receivers[y] += max_messages
 
-            sent_messages.append(len(num_messages))
-
-        received_messages = receivers.values()
-
-
-        num_receivers = len(receivers)
+        num_receivers = len(receiver_set)
         num_senders = len(unique_messages)
 
         return total_num_policies, num_safe_policies, total_num_messages, num_unique_messages, num_receivers, \
@@ -521,7 +508,8 @@ class Evaluator(object):
                             return False, num_msgs, hop
 
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop, sdx_path))
-                        uniq_msgs[next_sdx][n.sdx_id][in_participant] += 1
+                        uniq_msgs["senders"][n.sdx_id].add((next_sdx, in_participant, n.match))
+                        uniq_msgs["receivers"][next_sdx].add((n.sdx_id, in_participant, n.match))
                         num_msgs += 1
 
                         if out_participant in out_participants:
@@ -552,7 +540,8 @@ class Evaluator(object):
                                                                new_match,
                                                                hop,
                                                                sdx_path))
-                                uniq_msgs[next_sdx][n.sdx_id][in_participant] += 1
+                                uniq_msgs["senders"][n.sdx_id].add((next_sdx, in_participant, new_match))
+                                uniq_msgs["receivers"][next_sdx].add((n.sdx_id, in_participant, new_match))
                                 num_msgs += 1
 
         return True, num_msgs, max_hop
