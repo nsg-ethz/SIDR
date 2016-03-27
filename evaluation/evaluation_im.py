@@ -231,7 +231,7 @@ class Evaluator(object):
         num_cycles = 0
         longest_cycle = 0
         shortest_cycle = 100000
-        unique_messages = {"senders": defaultdict(set), "receicers": defaultdict(set)}
+        unique_messages = {"senders": defaultdict(set), "receivers": defaultdict(set)}
         max_hops = 0
 
         simple_loops = 0
@@ -398,7 +398,7 @@ class Evaluator(object):
         num_cycles = 0
         longest_cycle = 0
         shortest_cycle = 0
-        unique_messages = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+        unique_messages = {"senders": defaultdict(set), "receivers": defaultdict(set)}
         simple_loops = 0
         max_hops = 0
 
@@ -457,12 +457,6 @@ class Evaluator(object):
 
         sent_messages = [len(x) for x in unique_messages["senders"].values()]
         received_messages = [len(x) for x in unique_messages["receivers"].values()]
-
-        for key, values in unique_messages.iteritems():
-            receiver_set |= set(values.keys())
-            for y in values.values():
-                for z in y.values():
-                    num_unique_messages += z
 
         num_receivers = len(receiver_set)
         num_senders = len(unique_messages)
@@ -571,7 +565,7 @@ def main(argv):
     print "Init Evaluator"
     start = time.clock()
 
-    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), int(argv.start), argv.output, True)
+    evaluator = Evaluator(int(argv.mode), argv.sdx, argv.policies, int(argv.iterations), int(argv.start), argv.output, False)
 
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
     print "Evaluate Policies"
