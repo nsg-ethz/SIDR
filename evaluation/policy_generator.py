@@ -22,7 +22,7 @@ class PolicyGenerator(object):
         self.maximum = maximum
         self.mode = mode
 
-        if mode == 0:
+        if mode == -1:
             max = 2
         else:
             max = 5
@@ -70,7 +70,7 @@ class PolicyGenerator(object):
                                 op = self.get_match()
                                 match_int = self.transform_match_to_int(op)
 
-                                while match_int in matches:
+                                while match_int in matches and mode != 0:
                                     op = self.get_match()
                                     match_int = self.transform_match_to_int(op)
 

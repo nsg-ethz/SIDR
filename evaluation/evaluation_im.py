@@ -48,9 +48,10 @@ class Evaluator(object):
         self.iterations = iterations
         self.start = start
         self.output = output + "evaluation_" + str(mode) + ".log"
-        self.communication = output + "communication" + str(mode) + ".log"
-        self.loop_length = output + "loop_length" + str(mode) + ".log"
+        self.communication = output + "communication_" + str(mode) + ".log"
+        self.loop_length = output + "loop_length_" + str(mode) + ".log"
         self.max_hops = output + "max_hops_" + str(mode) + ".log"
+        self.loop_file = output + "loops_" + str(mode) + ".log"
 
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | "
@@ -181,7 +182,7 @@ class Evaluator(object):
         total_num_policies = len(paths) - 1 + paths['other']
         num_safe_policies = paths['other']
 
-        num_cycles = 0=
+        num_cycles = 0
         num_messages = list()
         max_hops = 0
 
@@ -276,7 +277,7 @@ class Evaluator(object):
                         check.append((in_participant, next_sdx))
 
                         # count the message
-                        messages((n.sdx_id, next_sdx, in_participant))
+                        messages.add((n.sdx_id, next_sdx, in_participant))
 
             # check all policy activated paths
             for participant in out_participants:
@@ -301,7 +302,7 @@ class Evaluator(object):
                             dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
 
                             # count the message
-                            messages((n.sdx_id, next_sdx, in_participant))
+                            messages.add((n.sdx_id, next_sdx, in_participant))
         return True, max_hop
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
@@ -344,7 +345,7 @@ class Evaluator(object):
 
             # init queue
             dfs_queue = list()
-            sdx_path = [(from_participant, sdx_id)]
+            sdx_path = [(from_participant, sdx_id, to_participant)]
 
             # add all next hop sdxes to the queue
             dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1, sdx_path))
@@ -385,11 +386,9 @@ class Evaluator(object):
             if hop > max_hop:
                 max_hop = hop
 
-            sdx_path = list(n.sdx_path)
-            if (n.in_participant, n.sdx_id) in sdx_path:
-                self.logger.debug("SDX Loop: " + ",".join([str(x) for x in sdx_path]) + "," +
-                                  str((n.in_participant, n.sdx_id)) + " - policy at " + str(sdx_id))
-            sdx_path.append((n.in_participant, n.sdx_id))
+            #if (n.in_participant, n.sdx_id) in sdx_path:
+            #    self.logger.debug("SDX Loop: " + ",".join([str(x) for x in sdx_path]) + "," +
+            #                      str((n.in_participant, n.sdx_id)) + " - policy at " + str(sdx_id))
 
             # get all outgoing paths for the in_participant
             out_participants = self.sdx_structure[n.sdx_id][n.in_participant]["policies"][n.destination].keys()
@@ -405,8 +404,13 @@ class Evaluator(object):
                     # treat paths that go through the same sdx as if they didn't exist
                     if next_sdx != n.sdx_id:
 
+                        sdx_path = list(n.sdx_path)
+                        sdx_path.append((n.in_participant, n.sdx_id, out_participant))
+
                         # check if the intial sdx is on the path, if so, a loop is created
                         if sdx_id == next_sdx and from_participant == in_participant:
+                            with open(self.loop_file, 'a', 102400) as output:
+                                output.write("FROM:" + str(from_participant) + "@" + str(sdx_id) + "|" + str(n.destination) + "|" + "|".join([",".join([str(y) for y in x]) for x in sdx_path]) + "|" + str(in_participant) + "," + str(next_sdx) + "\n")
                             return False, hop
 
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop, sdx_path))
@@ -430,8 +434,13 @@ class Evaluator(object):
                             # treat paths that go through the same sdx as if they didn't exist
                             if next_sdx != n.sdx_id:
 
+                                sdx_path = list(n.sdx_path)
+                                sdx_path.append((n.in_participant, n.sdx_id, participant))
+
                                 # check if the intial sdx is on the path, if so, a loop is created
                                 if sdx_id == next_sdx and from_participant == in_participant:
+                                    with open(self.loop_file, 'a', 102400) as output:
+                                        output.write("FROM:" + str(from_participant) + "@" + str(sdx_id) + "|" + str(n.destination) + "|" + "|".join([",".join([str(y) for y in x]) for x in sdx_path]) + "|" + str(in_participant) + "," + str(next_sdx) + "\n")
                                     return False, hop
 
                                 dfs_queue.append(self.dfs_node(next_sdx,

@@ -16,7 +16,7 @@ def main(argv):
 
     print "Read Graph File"
     start = time.clock()
-    as_topo = nx.read_gpickle(argv.path + "as_graph.gpickle")
+    as_topo = nx.read_gpickle(argv.graph)
     print "--> Execution Time: " + str(time.clock() - start) + "s\n"
 
     print "Read IXP File"
@@ -58,31 +58,41 @@ def main(argv):
             path_strings = x[2].split(";")
             paths = [p.split(",") for p in path_strings]
 
+
+
+            with open(argv.output + 'pa_num.log', 'a', 102400) as output:
+                output.write(str(in_participant) + "|" + str(destination) + "|" +
+                             str(len(paths)) + "\n")
+
             j = 0
             for path in paths:
+
                 # convert string paths to ints
                 for i in range(0, len(path)):
                     path[i] = int(path[i])
+                path.insert(0, in_participant)
 
                 sdxes, link_types, shortcuts = analyze_path(participants_2_ixps, path, as_topo)
 
-                path_string = ""
-                for i in range(0, len(path)):
-                    if i == len(path) - 1:
-                        path_string += str(path[i])
-                    else:
-                        path_string += str(path[i]) + "-" + str(sdxes[i]) + "/" + str(link_types[i]) + "-"
+                if shortcuts:
+                    path_string = ""
+                    for i in range(0, len(path)):
+                        if i == len(path) - 1:
+                            path_string += str(path[i])
+                        else:
+                            sdx_string = ",".join([str(x) for x in list(sdxes[i][1])])
+                            path_string += str(path[i]) + "-" + sdx_string + "/" + str(link_types[i]) + "-"
 
-                path_type = "A"
-                if j == 0:
-                    path_type = "B"
+                    path_type = "A"
+                    if j == 0:
+                        path_type = "B"
+
+                    shortcut_string = ";".join(shortcuts)
+
+                    with open(argv.output + 'pa_shortcuts.log', 'a', 102400) as output:
+                        output.write(str(in_participant) + "|" + str(destination) + "|" + path_type + "|" +
+                                     path_string + "|" + shortcut_string + "\n")
                 j += 1
-
-                shortcut_string = ";".join(shortcuts)
-
-                with open('path_analysis.log', 'a', 102400) as output:
-                    output.write(str(in_participant) + "|" + str(destination) + "|" + path_type + "|" +
-                                 path_string + "|" + shortcut_string + "\n")
 
     print "--> Execution Time: " + str(time.clock() - tmp_start) + "s\n"
     print "-> Total Execution Time: " + str(time.clock() - start) + "s\n"
@@ -146,8 +156,10 @@ def analyze_path(participants_2_ixps, as_path, topo):
                 else:
                     link_type = 9
 
-                shortcuts.append(str(as_path[index1]) + "-" + str(link_type) + "/"
-                                 + str(intersection) + "-" + as_path[index1])
+                sdx_string = ",".join([str(x) for x in list(intersection)])
+
+                shortcuts.append(str(as1) + "-" + sdx_string + "/"
+                                 + str(link_type) + "-" + str(as2))
     return sdxes, link_types, shortcuts
 
 
@@ -159,6 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('mode', help='mode of operation')
     parser.add_argument('paths', help='path to paths file')
     parser.add_argument('ixps', help='path to ixp file')
+    parser.add_argument('graph', help='path of graph file')
     parser.add_argument('output', help='path of output file')
 
     args = parser.parse_args()

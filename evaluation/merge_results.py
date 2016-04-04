@@ -31,7 +31,7 @@ def main(argv):
                     results[i-1]["bgp_only"]["frac1"] = float(x[1])/float(x[0])
                 elif j == 1:
                     if results[i-1]["total"] != int(x[0]):
-                        print "Error: Total doesn't match " + str(i) + "/" + str(j)
+                        print "Error: Total doesn't match " + str(i) + "/" + str(j) 
                     results[i-1]["our_scheme"] = dict()
                     results[i-1]["our_scheme"]["safe"] = int(x[1])
                     results[i-1]["our_scheme"]["frac1"] = float(x[1])/float(x[0])
