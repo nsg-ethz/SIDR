@@ -1,7 +1,7 @@
 # Loops1 Test
 
 ## Setup
-![Loops1 Setup](https://raw.githubusercontent.com/nsg-ethz/supercharged_sdx/correctness/examples/test_loops1/setup.png)
+![Loops1 Setup](setup.PNG)
 
 The two loop tests test how SIDR handles two incoming correcntess messages. In this example, there will be one correctness message from SDX 13 and one from SDX 3 coming to SDX 1 through 300. We also test how two different loops are resolved.
 
