@@ -19,13 +19,14 @@ class CIB(object):
 
             # Get a cursor object
             cursor = self.db.cursor()
-            cursor.execute('CREATE TABLE IF NOT EXISTS input (i_participant INT, prefix TEXT, sender_sdx INT, sdx_set TEXT, '
-                           'PRIMARY KEY (i_participant, prefix, sender_sdx))')
+            cursor.execute('CREATE TABLE IF NOT EXISTS input (i_participant INT, prefix TEXT, sender_sdx INT, '
+                           'sdx_set TEXT, PRIMARY KEY (i_participant, prefix, sender_sdx))')
 
             cursor.execute('CREATE TABLE IF NOT EXISTS local (i_participant INT, prefix TEXT, sdx_set TEXT, '
                            'PRIMARY KEY (i_participant, prefix))')
 
-            cursor.execute('CREATE TABLE IF NOT EXISTS output (e_participant INT, prefix TEXT, receiver_participant INT, sdx_set TEXT, '
+            cursor.execute('CREATE TABLE IF NOT EXISTS output (e_participant INT, prefix TEXT, '
+                           'receiver_participant INT, sdx_set TEXT, '
                            'PRIMARY KEY (e_participant, prefix, receiver_participant))')
 
             self.db.commit()
@@ -63,7 +64,8 @@ class CIB(object):
                 sdx_set.sort()
                 if not old_entry or old_entry["sdx_set"] != sdx_set:
                     cursor.execute('INSERT OR REPLACE INTO input (i_participant, prefix, sender_sdx, sdx_set)'
-                                       'VALUES (?,?,?,?)', (ingress_participant, prefix, sender_sdx, ";".join(str(v) for v in new_entry["sdx_set"])))
+                                   'VALUES (?,?,?,?)',
+                                   (ingress_participant, prefix, sender_sdx, ";".join(str(v) for v in new_entry["sdx_set"])))
                     self.db.commit()
 
                     return True, old_entry, new_entry
@@ -86,7 +88,8 @@ class CIB(object):
                 new_entry = CIB.merge_ci_entries(ci_entries)
                 if not old_entry or new_entry["sdx_set"] != old_entry["sdx_set"]:
                     cursor.execute('INSERT OR REPLACE INTO local (i_participant, prefix, sdx_set) '
-                                   'VALUES (?,?,?)', (ingress_participant, prefix, ";".join(str(v) for v in new_entry["sdx_set"])))
+                                   'VALUES (?,?,?)',
+                                   (ingress_participant, prefix, ";".join(str(v) for v in new_entry["sdx_set"])))
                     self.db.commit()
 
                     return True, old_entry, new_entry

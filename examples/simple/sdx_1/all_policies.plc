@@ -1,0 +1,57 @@
+[
+    {
+		"time": 1,
+        "type": "outbound",
+        "participant": 1,
+        "match": {
+            "tcp_dst": 80
+        },
+        "action": {
+            "fwd": 2
+        }
+    },
+    {
+		"time": 2,
+        "type": "outbound",
+        "participant": 1,
+        "match": {
+            "tcp_dst": 4321
+        },
+        "action": {
+            "fwd": 3
+        }
+    },
+    {
+		"time": 3,
+        "type": "outbound",
+        "participant": 1,
+        "match": {
+            "tcp_dst": 4322
+        },
+        "action": {
+            "fwd": 3
+        }
+    },
+    {
+		"time": 4,
+        "type": "inbound",
+        "participant": 3,
+        "match": {
+            "tcp_dst": 4321
+        },
+        "action": {
+            "fwd": 0
+        }
+    },
+    {
+		"time": 5,
+        "type": "inbound",
+        "participant": 3,
+        "match": {
+            "tcp_dst": 4322
+        },
+        "action": {
+            "fwd": 1
+        }
+    }
+]

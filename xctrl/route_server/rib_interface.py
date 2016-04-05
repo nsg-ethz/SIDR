@@ -108,3 +108,6 @@ class RIBInterface(object):
             participant_sets.append(self.get_all_participants_advertising(prefix))
 
         return participant_sets
+
+    def get_route_from_rib(self, participant, rib_name, prefix):
+        return self.rib[participant].get_route(rib_name, prefix)

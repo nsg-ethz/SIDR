@@ -69,8 +69,8 @@ if __name__ == '__main__':
 
     base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples",
                                              args.dir,))
-    config_file = os.path.join(base_path, "config", "sdx_global.cfg")
-    policy_file = os.path.join(base_path, "policies", str(args.sdxid) + ".log")
+    config_file = os.path.join(base_path, "global.cfg")
+    policy_file = os.path.join(base_path, "sdx_" + str(args.sdxid), "all_policies.plc")
 
     address, port = parse_config(args.sdxid)
     time_2_policy = parse_policy_log(policy_file)

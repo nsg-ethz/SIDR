@@ -12,15 +12,11 @@ FLOW_MISS_PRIORITY = 0
 NO_COOKIE = 0
 
 class Config(object):
-    def __init__(self, config_file):
+    def __init__(self, config_file, instance):
         self.server = None
 
-        self.mode = None
         self.ofv = None
         self.tables = None
-        self.dpids = None
-        self.dp_alias = []
-        self.dpid_2_name = {}
         self.datapath_ports = None
 
         self.datapaths = {}
@@ -28,45 +24,29 @@ class Config(object):
         self.ofproto = None
 
         # loading config file
-        config = json.load(open(config_file, 'r'))
+        tmp_config = json.load(open(config_file, 'r'))
+        config = tmp_config["SDXes"][str(instance)]
 
-        # read from file
-        if "Mode" in config:
-            if config["Mode"] == "Multi-Switch":
-                self.mode = 0
-            elif config["Mode"] == "Multi-Table":
-                self.mode = 1
         if "RefMon Settings" in config:
             if "fabric options" in config["RefMon Settings"]:
-                if self.mode == 1 and "tables" in config["RefMon Settings"]["fabric options"]:
+                if "tables" in config["RefMon Settings"]["fabric options"]:
                     self.tables = config["RefMon Settings"]["fabric options"]["tables"]
-                if self.mode == 0 and "dpids" in config["RefMon Settings"]["fabric options"]:
-                    self.dpids = config["RefMon Settings"]["fabric options"]["dpids"]
-                    for k,v in self.dpids.iteritems():
-                        self.dpid_2_name[v] = k
-                if "dp alias" in config["RefMon Settings"]["fabric options"]:
-                    self.dp_alias = config["RefMon Settings"]["fabric options"]["dp alias"]
                 if "OF version" in config["RefMon Settings"]["fabric options"]:
                     self.ofv = config["RefMon Settings"]["fabric options"]["OF version"]
 
             if "fabric connections" in config["RefMon Settings"]:
                 self.datapath_ports = config["RefMon Settings"]["fabric connections"]
 
-        if "RefMon Server" in config:
-            self.server = config["RefMon Server"]
+            if "long URL" in config["RefMon Settings"]:
+                self.long_url = config["RefMon Settings"]["long URL"]
+            if "short URL" in config["RefMon Settings"]:
+                self.short_url = config["RefMon Settings"]["short URL"]
         else:
             raise InvalidConfigError(config)
 
         # check if valid config
-        if self.mode == 0:
-            if not (self.ofv and self.dpids and self.datapath_ports):
-                raise InvalidConfigError(config)
-        elif self.mode == 1:
-            if not (self.ofv == "1.3" and self.tables and self.datapath_ports):
-                raise InvalidConfigError(config)
-        else:
+        if not (self.ofv == "1.3" and self.tables and self.datapath_ports):
             raise InvalidConfigError(config)
-
 
 class InvalidConfigError(Exception):
     def __init__(self, flow_mod):
@@ -111,7 +91,7 @@ class MultiTableController():
                 self.process_flow_mod(self.fm_queue.get())
 
     def switch_disconnect(self, dp):
-        if self.config.datapaths["main"] == dp:
+        if "main" in self.config.datapaths and self.config.datapaths["main"] == dp:
             self.logger.info("mt_ctrlr: main switch disconnected")
             del self.config.datapaths["main"]
 

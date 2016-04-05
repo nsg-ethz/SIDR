@@ -3,25 +3,31 @@
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
 import json
-import argparse
 import logging
 
 from multiprocessing.connection import Listener
 from collections import defaultdict
-
+from gss import GSSmT
+from flowmodsender import FlowModSender
 from lib import XCTRLModule
 
 
 class PolicyHandler(XCTRLModule):
-    def __init__(self, config, event_queue, debug, supersets, loop_detector):
+    def __init__(self, config, event_queue, debug, vmac_encoder, loop_detector, test):
         super(PolicyHandler, self).__init__(config, event_queue, debug)
         self.logger = logging.getLogger('xctrl')
         self.logger.info('init')
 
-        self.supersets = supersets
+        self.test = test
+
         self.loop_detector = loop_detector
+        self.vmac_encoder = vmac_encoder
+
+        self.sender = FlowModSender(self.config.refmon_url)
 
         self.policies = defaultdict(lambda: defaultdict(list))
+
+        self.controller = GSSmT(self.sender, self.config, self.vmac_encoder)
 
         self.logger.info('init')
 
@@ -29,10 +35,18 @@ class PolicyHandler(XCTRLModule):
         self.listener = None
 
     def start(self):
+        """
+        Receives policiy installation requests, checks the request with the loop detection module and installs it.
+        :return:
+        """
         self.logger.info('start')
 
         self.listener = Listener((self.config.policy_handler.address, self.config.policy_handler.port), authkey=None)
         self.run = True
+
+        if not self.test:
+            self.controller.start()
+
         while self.run:
             conn = self.listener.accept()
             tmp = conn.recv()
@@ -43,22 +57,30 @@ class PolicyHandler(XCTRLModule):
             for policy in policies:
                 if policy["type"] == "outbound":
                     safe_to_install = self.loop_detector.activate_policy(policy["participant"], policy["action"]["fwd"])
+                    fwd = policy["action"]["fwd"]
                 else:
                     safe_to_install = True
+                    fwd = policy["action"]["fwd"]
 
                 if safe_to_install:
-                    self.policies[policy["participant"]][policy["type"]].append(Policy(policy["match"],
+                    if not self.test:
+                        cookie = self.controller.add_flow_rule(policy["participant"],
+                                                               policy["type"],
+                                                               policy["match"],
+                                                               fwd)
+                    else:
+                        cookie = 0
+
+                    self.policies[policy["participant"]][policy["type"]].append(Policy(cookie,
+                                                                                       policy["match"],
                                                                                        policy["action"],
-                                                                                       policy["action"]["fwd"]))
+                                                                                       fwd))
+
                     i += 1
 
             reply = "Total Received Policies: " + str(len(policies)) + " Accepted Policies: " + str(i)
             conn.send(reply)
             conn.close()
-
-            if safe_to_install:
-                # push flow rule to switch
-                pass
 
     def stop(self):
         self.logger.info('stop')
@@ -78,6 +100,15 @@ class PolicyHandler(XCTRLModule):
                     ingress_participants.add(participant)
         return ingress_participants
 
+    def update_policies(self):
+        # after change of supersets, update policies in the dataplane, only outbound policies need to be changed
+        for policies in self.policies.values():
+            for policy in policies["outbound"]:
+                cookie = self.controller.update_flow_rule("outbound",
+                                                          policy.cookie,
+                                                          policy.match,
+                                                          policy.forward_participant)
+
 
 class PolicyHandlerConfig(object):
     def __init__(self, address, port):
@@ -86,7 +117,8 @@ class PolicyHandlerConfig(object):
 
 
 class Policy(object):
-    def __init__(self, match, action, forward_participant):
+    def __init__(self, cookie, match, action, forward_participant):
         self.match = match
         self.action = action
         self.forward_participant = forward_participant
+        self.cookie = cookie

@@ -11,13 +11,13 @@ from multiprocessing.queues import Queue
 from Queue import Empty
 from threading import Thread
 
-from lib import XCTRLModule
+from lib import XCTRLModule, XCTRLEvent
 
 from cib import CIB
 
 
 class LoopDetector(XCTRLModule):
-    def __init__(self, config, event_queue, debug, rib, policy_handler):
+    def __init__(self, config, event_queue, debug, rib, policy_handler, test):
         super(LoopDetector, self).__init__(config, event_queue, debug)
 
         self.cib = CIB(self.config.id)
@@ -28,7 +28,7 @@ class LoopDetector(XCTRLModule):
         self.forbidden_paths = defaultdict(lambda: defaultdict(list))
 
         self.run = False
-        self.listener = Listener((self.config.sdx.address, self.config.sdx.port), authkey=None)
+        self.listener = Listener((self.config.sdx.address, self.config.loop_detector.port), authkey=None)
         self.msg_in_queue = Queue(1000)
         self.msg_out_queue = Queue(1000)
 
@@ -71,6 +71,8 @@ class LoopDetector(XCTRLModule):
 
         prefixes = self.rib.get_all_prefixes_advertised(egress_participant, ingress_participant)
         for prefix in prefixes:
+            print "prefix: " + str(prefix) + ", egress: " + str(egress_participant)
+            print "forbidden: " + str(self.forbidden_paths)
             if egress_participant not in self.forbidden_paths[ingress_participant][prefix]:
                 allowed_prefixes.append(prefix)
 
@@ -119,6 +121,7 @@ class LoopDetector(XCTRLModule):
             self.logger.debug("Received Correctness Message from " + str(msg["sender_sdx"]) +
                               " concerning " + str(msg["prefix"]))
 
+            changes = list()
             ingress_participant = self.config.asn_2_participant[msg["ingress_participant"]]
 
             ci_update, old_ci_entry, new_ci_entry = self.cib.update_in(msg["type"],
@@ -138,11 +141,11 @@ class LoopDetector(XCTRLModule):
                     egress_participants = egress_participants.intersection(filter_participants)
 
                     for filter_participant in filter_participants:
-                        self.update_forbidden_paths(msg["prefix"],
-                                                    None,
-                                                    set(msg["sdx_set"]),
-                                                    ingress_participant,
-                                                    filter_participant)
+                        changes.append(self.update_forbidden_paths(msg["prefix"],
+                                                                   None,
+                                                                   set(msg["sdx_set"]),
+                                                                   ingress_participant,
+                                                                   filter_participant))
 
                     for egress_participant in egress_participants:
                         ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
@@ -169,6 +172,10 @@ class LoopDetector(XCTRLModule):
                             timestamp = time()
 
                             self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+
+                    if changes:
+                        event = XCTRLEvent("LoopDetector", "FORBIDDEN PATHS CHANGE", changes)
+                        self.event_queue.put(event)
 
     def rib_update(self, updates):
         """
@@ -198,7 +205,6 @@ class LoopDetector(XCTRLModule):
                                             None,
                                             participant,
                                             advertising_participant)
-
 
             if 'announce' in tmp_update:
                 ingress_participants = self.policy_handler.get_ingress_participants(advertising_participant)
@@ -288,7 +294,6 @@ class LoopDetector(XCTRLModule):
         if not old_cib_entry and not new_cib_entry:
             return
         if old_cib_entry:
-            # TODO add smarter way to find all SDXes, instead of only first ASN also have second
             old_sdxes = self.config.loop_detector.asn_2_sdx[old_cib_entry["receiver_participant"]]
             withdraw_msg = {"type": "withdraw",
                             "prefix": old_cib_entry["prefix"],
@@ -299,7 +304,6 @@ class LoopDetector(XCTRLModule):
                             "random_value": random_value
                             }
         if new_cib_entry:
-            # TODO add smarter way to find all SDXes, instead of only first ASN also have second
             new_sdxes = self.config.loop_detector.asn_2_sdx[new_cib_entry["receiver_participant"]]
             announce_msg = {"type": "announce",
                             "prefix": new_cib_entry["prefix"],
@@ -330,6 +334,8 @@ class LoopDetector(XCTRLModule):
         :return:None
         """
 
+        change = dict()
+
         if not as_path:
             route = self.rib.get_route(prefix, egress_participant)
             if route:
@@ -339,7 +345,11 @@ class LoopDetector(XCTRLModule):
                     self.forbidden_paths[ingress_participant][prefix].remove(egress_participant)
                 self.logger.debug("update forbidden paths for " + str(ingress_participant) + " - " + str(prefix) +
                                   " results in " + str(self.forbidden_paths[ingress_participant][prefix]))
-                return
+
+                change["participant"] = ingress_participant
+                change["prefix"] = prefix
+
+                return change
         as_path_sdxes = self.get_sdxes_on_path([int(v) for v in as_path.split(" ")])
         if not sdx_set:
             cl_entry = self.cib.get_cl_entry(prefix, ingress_participant)
@@ -351,12 +361,18 @@ class LoopDetector(XCTRLModule):
         intersection = sdx_set.intersection(as_path_sdxes)
 
         if len(intersection) > 0:
-            self.forbidden_paths[ingress_participant][prefix].append(egress_participant)
+            if egress_participant not in self.forbidden_paths[ingress_participant][prefix]:
+                self.forbidden_paths[ingress_participant][prefix].append(egress_participant)
         elif egress_participant in self.forbidden_paths[ingress_participant][prefix]:
             self.forbidden_paths[ingress_participant][prefix].remove(egress_participant)
 
         self.logger.debug("update forbidden paths for " + str(ingress_participant) + " - " +
                           str(prefix) + " results in " + str(self.forbidden_paths[ingress_participant][prefix]))
+
+        change["participant"] = ingress_participant
+        change["prefix"] = prefix
+
+        return change
 
     def get_sdxes_on_path(self, as_path):
         """
@@ -389,22 +405,24 @@ class LoopDetector(XCTRLModule):
         :return:int
         """
 
-        sdx_id = set([self.config.id])
-
         entry = self.rib.get_route(prefix, egress_participant)
 
         if entry:
             as_path = [int(n) for n in entry["as_path"].split(" ")]
-            for as1 in as_path:
+            for i in range(0, len(as_path) - 1):
+                as1 = as_path[i]
+                as2 = as_path[i + 1]
                 as1_sdxes = self.config.loop_detector.asn_2_sdx[as1]
-                as1_sdxes = as1_sdxes.difference(sdx_id)
+                as2_sdxes = self.config.loop_detector.asn_2_sdx[as2]
+                as1_sdxes = as1_sdxes.intersection(as2_sdxes)
                 if len(as1_sdxes) > 0:
                     return as1
         return None
 
 
 class LoopDetectorConfig(object):
-    def __init__(self, sdx_2_asn, asn_2_sdx, max_random_value):
+    def __init__(self, sdx_2_asn, asn_2_sdx, max_random_value, port):
         self.sdx_2_asn = sdx_2_asn
         self.asn_2_sdx = asn_2_sdx
         self.max_random_value = max_random_value
+        self.port = port

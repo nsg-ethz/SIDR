@@ -7,6 +7,7 @@ from multiprocessing.connection import Listener
 POLICY_SOCKET = ("localhost", 5551)
 LOG = True
 
+
 def policy_listener():
         '''Socket listener for policy events '''
         if LOG: print "Policy Event Handler started."

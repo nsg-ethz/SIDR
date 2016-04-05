@@ -29,18 +29,20 @@ class Config(object):
         self.loop_detector = None
         self.policy_handler = None
 
-        self.participants = {}
-        self.port_2_participant = {}
+        self.participants = dict()
+        self.port_2_participant = dict()
 
         self.participant_2_port = defaultdict(list)
-        self.portip_2_participant = {}
+        self.portip_2_participant = dict()
         self.participant_2_portip = defaultdict(list)
 
-        self.portmac_2_participant = {}
+        self.portmac_2_participant = dict()
         self.participant_2_portmac = defaultdict(list)
 
-        self.asn_2_participant = {}
-        self.participant_2_asn = {}
+        self.asn_2_participant = dict()
+        self.participant_2_asn = dict()
+
+        self.refmon_url = ""
 
         self.parse_config(config_file)
 
@@ -62,27 +64,27 @@ class Config(object):
 
                 if "Address" in sdx:
                     address = sdx["Address"]
-                if "Port" in sdx:
-                    port = sdx["Port"]
+                if "Loop Detector" in sdx and "Port" in sdx["Loop Detector"]:
+                    port = sdx["Loop Detector"]["Port"]
 
                 if sdx_id == self.id:
-                    if "Refmon URL" in sdx:
-                        self.refmon_url = sdx["Refmon URL"]
+                    if "RefMon Settings" in sdx and "long URL" in sdx["RefMon Settings"]:
+                        self.refmon_url = sdx["RefMon Settings"]["long URL"]
 
                     if "VNHs" in sdx:
                         vnhs = IPNetwork(sdx["VNHs"])
 
-                    if "VMAC Computation" in config:
-                        if "VMAC Size" in config["VMAC Computation"]:
-                            vmac_size = config["VMAC Computation"]["VMAC Size"]
-                        if "Superset ID Size" in config["VMAC Computation"]:
-                            superset_id_size = config["VMAC Computation"]["Superset ID Size"]
-                        if "Max Superset Size" in config["VMAC Computation"]:
-                            max_superset_size = config["VMAC Computation"]["Max Superset Size"]
-                        if "Best Path Size" in config["VMAC Computation"]:
-                            best_path_size = config["VMAC Computation"]["Best Path Size"]
-                        if "Superset Threshold" in config["VMAC Computation"]:
-                            superset_threshold = config["VMAC Computation"]["Superset Threshold"]
+                    if "VMAC Computation" in sdx:
+                        if "VMAC Size" in sdx["VMAC Computation"]:
+                            vmac_size = sdx["VMAC Computation"]["VMAC Size"]
+                        if "Superset ID Size" in sdx["VMAC Computation"]:
+                            superset_id_size = sdx["VMAC Computation"]["Superset ID Size"]
+                        if "Max Superset Size" in sdx["VMAC Computation"]:
+                            max_superset_size = sdx["VMAC Computation"]["Max Superset Size"]
+                        if "Best Path Size" in sdx["VMAC Computation"]:
+                            best_path_size = sdx["VMAC Computation"]["Best Path Size"]
+                        if "Superset Threshold" in sdx["VMAC Computation"]:
+                            superset_threshold = sdx["VMAC Computation"]["Superset Threshold"]
 
                         self.vmac_encoder = SuperSetEncoderConfig(vmac_size,
                                                                   superset_id_size,
@@ -90,9 +92,12 @@ class Config(object):
                                                                   best_path_size,
                                                                   superset_threshold,
                                                                   vnhs)
+
                     if "Loop Detector" in sdx:
                         if "Max Random Value" in sdx["Loop Detector"]:
                             max_random_value = sdx["Loop Detector"]["Max Random Value"]
+                        if "Port" in sdx["Loop Detector"]:
+                            loop_handler_port = sdx["Loop Detector"]["Port"]
 
                     if "Policy Handler" in sdx:
                         if "Address" in sdx["Policy Handler"]:
@@ -112,9 +117,14 @@ class Config(object):
                             interface = sdx["Route Server"]["Interface"]
                         if "Fabric Port" in sdx["Route Server"]:
                             fabric_port = sdx["Route Server"]["Fabric Port"]
-                        self.route_server = RouteServerConfig(ip, connection_port, connection_key, fabric_port, interface)
+                        if "MAC" in sdx["Route Server"]:
+                            mac = sdx["Route Server"]["MAC"]
 
-                        self.arp_proxy = ARPProxyConfig(interface)
+                        rs_port = Port(fabric_port, mac, ip)
+
+                        self.route_server = RouteServerConfig(ip, connection_port, connection_key, rs_port, interface)
+
+                        self.arp_proxy = ARPProxyConfig(interface, rs_port)
 
                     if "Participants" in sdx:
                         peers_out = defaultdict(list)
@@ -166,7 +176,7 @@ class Config(object):
                     sdx_2_asn[sdx_id].add(participant["ASN"])
                     asn_2_sdx[participant["ASN"]].add(sdx_id)
 
-            self.loop_detector = LoopDetectorConfig(sdx_2_asn, asn_2_sdx, max_random_value)
+            self.loop_detector = LoopDetectorConfig(sdx_2_asn, asn_2_sdx, max_random_value, loop_handler_port)
 
 
 class SDX(object):

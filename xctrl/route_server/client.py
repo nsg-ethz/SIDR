@@ -17,7 +17,7 @@ def _write(stdout,data):
 
 
 ''' Sender function '''
-def _sender(conn,stdin,log):
+def _sender(conn,stdin):
     # Warning: when the parent dies we are seeing continual newlines, so we only access so many before stopping
     counter = 0
 
@@ -33,15 +33,12 @@ def _sender(conn,stdin,log):
             counter = 0
 
             conn.send(line)
-						
-            log.write(line + '\n')
-            log.flush()
 		
         except:
             pass
 	
 ''' Receiver function '''
-def _receiver(conn,stdout,log):
+def _receiver(conn,stdout):
 	
     while True:
         try:
@@ -52,9 +49,6 @@ def _receiver(conn,stdout,log):
 			
             _write(stdout, line) 
             ''' example: announce route 1.2.3.4 next-hop 5.6.7.8 as-path [ 100 200 ] '''
-            
-            log.write(line + '\n')
-            log.flush()
 		
         except:
             pass
@@ -69,19 +63,14 @@ if __name__ == '__main__':
 
     port = args.port if args.port else 6000
     key = args.key if args.key else 'xrs'
-	
-    log = open(logfile, "w")
-    log.write('Open Connection \n')
     
     conn = Client(('localhost', port), authkey=key)
     
-    sender = Thread(target=_sender, args=(conn,sys.stdin,log))
+    sender = Thread(target=_sender, args=(conn,sys.stdin))
     sender.start()
     
-    receiver = Thread(target=_receiver, args=(conn,sys.stdout,log))
+    receiver = Thread(target=_receiver, args=(conn,sys.stdout))
     receiver.start()
     
     sender.join()
     receiver.join()
-    
-    log.close()

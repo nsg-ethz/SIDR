@@ -9,19 +9,14 @@ from lib import XCTRLModule
 
 from netaddr import IPNetwork
 
-# TODO add VNH mapping
-
 
 class SuperSetEncoder(XCTRLModule):
-    def __init__(self, config, event_queue, debug, route_server, loop_detection):
+    def __init__(self, config, event_queue, debug, rib, loop_detection, test):
         super(SuperSetEncoder, self).__init__(config, event_queue, debug)
-        self.rib = route_server
+        self.rib = rib
         self.loop_detection = loop_detection
 
-        self.supersets = defaultdict(list)
-        self.num_vnhs_in_use = 0
-        self.vnh_2_prefix = {}
-        self.prefix_2_vnh = {}
+        self.supersets = list()
 
     def update_supersets(self, updates):
         sdx_msgs = {"type": "update",
@@ -97,7 +92,7 @@ class SuperSetEncoder(XCTRLModule):
 
     def recompute_all_supersets(self):
         # get all sets of participants advertising the same prefix
-        peer_sets = self.rib.get_all_participant_sets(self.prefix_2_vnh)
+        peer_sets = self.rib.get_all_participant_sets(self.config.vmac_encoder.prefix_2_vnh)
 
         # remove all subsets
         peer_sets.sort(key=len, reverse=True)
@@ -142,31 +137,39 @@ class SuperSetEncoder(XCTRLModule):
 
     def vnh_assignment(self, updates):
         for update in updates:
-            if ('announce' in update):
+            if 'announce' in update:
                 prefix = update['announce']['prefix']
 
-                if (prefix not in self.prefix_2_vnh):
+                if prefix not in self.config.vmac_encoder.prefix_2_vnh:
                     # get next VNH and assign it the prefix
-                    self.num_vnhs_in_use += 1
-                    vnh = str(self.config.vmac_encoder.vnhs[self.num_vnhs_in_use])
+                    self.config.vmac_encoder.num_vnhs_in_use += 1
+                    vnh = str(self.config.vmac_encoder.vnhs[self.config.vmac_encoder.num_vnhs_in_use])
 
-                    self.prefix_2_vnh[prefix] = vnh
-                    self.vnh_2_prefix[vnh] = prefix
+                    self.config.vmac_encoder.prefix_2_vnh[prefix] = vnh
+                    self.config.vmac_encoder.vnh_2_prefix[vnh] = prefix
+
+    def prefix_to_vnh(self, prefix):
+        return self.config.vmac_encoder.prefix_2_vnh[prefix]
+
+    def vnh_to_prefix(self, vnh):
+        return self.config.vmac_encoder.vnh_2_prefix[vnh]
 
     def vmac(self, vnh, participant):
-
         vmac_bitstring = ""
         vmac_addr = ""
 
-        if vnh in self.vnh_2_prefix:
+        if vnh in self.config.vmac_encoder.vnh_2_prefix:
             # get corresponding prefix
-            prefix = self.vnh_2_prefix[vnh]
+            prefix = self.config.vmac_encoder.vnh_2_prefix[vnh]
             # get set of participants advertising prefix
             basic_set = self.rib.get_all_participants_advertising(prefix, self.config.participants)
+
+
+
             # get corresponding superset identifier
             superset_identifier = 0
-            for i in range(0, len(self.config.vmac_encoder.supersets)):
-                if ((set(self.config.vmac_encoder.supersets[i])).issuperset(basic_set)):
+            for i in range(0, len(self.supersets)):
+                if (set(self.supersets[i])).issuperset(basic_set):
                     superset_identifier = i
                     break
 
@@ -178,8 +181,14 @@ class SuperSetEncoder(XCTRLModule):
 
             # add one bit for each participant that is a member of the basic set and has a "link" to it
             set_bitstring = ""
+
+            self.logger.debug('Basic Set: ' + str(basic_set) +
+                              ', Peers Out: ' + str(self.config.participants[participant].peers_out) +
+                              'Loop Detection: ' + str(self.loop_detection[participant][prefix]))
+
             for temp_participant in self.supersets[superset_identifier]:
-                if temp_participant in basic_set and temp_participant in self.participants[participant].peers_out:
+                if temp_participant in basic_set and temp_participant in self.config.participants[participant].peers_out and \
+                                temp_participant not in self.loop_detection[participant][prefix]:
                     set_bitstring += "1"
                 else:
                     set_bitstring += "0"
@@ -190,31 +199,92 @@ class SuperSetEncoder(XCTRLModule):
             vmac_bitstring += set_bitstring
 
             # add identifier of best path
-            route = self.config.participants[participant].get_route('local',prefix)
+            route = self.rib.get_route_from_rib(participant, 'local', prefix)
             if route:
                 best_participant = self.config.portip_2_participant[route['next_hop']]
 
-                vmac_bitstring += '{num:0{width}b}'.format(num=best_participant, width=(self.config.best_path_size))
+                vmac_bitstring += '{num:0{width}b}'.format(num=best_participant,
+                                                           width=self.config.vmac_encoder.best_path_size)
 
                 # convert bitstring to hexstring and then to a mac address
-                vmac_addr = '{num:0{width}x}'.format(num=int(vmac_bitstring,2),
-                                                     width=self.config.vmac_encoder.vmac_size/4)
-                vmac_addr = ':'.join([vmac_addr[i]+vmac_addr[i+1]
-                                      for i in range(0,self.config.vmac_encoder.vmac_size/4,2)])
+                vmac_addr = self.bitstring_to_mac_address(vmac_bitstring)
 
                 self.logger.debug('VMAC-Mapping \nParticipant: ' + str(participant) + ', Prefix: ' + str(prefix) +
                                   'Best Path: ' + str(best_participant) + '\nSuperset ' + str(superset_identifier) +
-                                  ': ' + str(self.config.vmac_encoder.supersets[superset_identifier]) + '\nVMAC: ' +
+                                  ': ' + str(self.supersets[superset_identifier]) + '\nVMAC: ' +
                                   str(vmac_addr) + ', Bitstring: ' + str(vmac_bitstring))
 
         return vmac_addr
 
-    def vmac_best_path(self, participant_id):
+    def best_path_match(self, participant_id):
         # add participant identifier
-        vmac_bitstring = '{num:0{width}b}'.format(num=participant_id, width=self.config.vmac_encoder.vmac_size)
+        vmac_bitstring = '{num:0{width}b}'.format(num=participant_id,
+                                                  width=self.config.vmac_encoder.vmac_size)
 
         # convert bitstring to hexstring and then to a mac address
-        vmac_addr = '{num:0{width}x}'.format(num=int(vmac_bitstring,2), width=self.config.vmac_encoder.vmac_size/4)
+        return self.bitstring_to_mac_address(vmac_bitstring)
+
+    def best_path_mask(self):
+        # add participant identifier
+        vmac_bitstring = '{num:0{width}b}'.format(num=2**self.config.vmac_encoder.best_path_size - 1,
+                                                  width=self.config.vmac_encoder.vmac_size)
+
+        # convert bitstring to hexstring and then to a mac address
+        return self.bitstring_to_mac_address(vmac_bitstring)
+
+    def participant_bit_match(self, participant):
+        for i in range(0, len(self.supersets)):
+            if participant in self.supersets[i]:
+                participant_position = self.supersets[i].index(participant) + 1
+                superset_identifier = i
+
+                # add participant identifier
+                vmac_bitstring = '{num:0{width}b}'.format(num=superset_identifier,
+                                                              width=self.config.vmac_encoder.superset_id_size)
+
+                vmac_bitstring += '{num:0{width}b}'.format(num=1, width=participant_position)
+                vmac_bitstring += '{num:0{width}b}'.format(num=0,
+                                                           width=self.config.vmac_encoder.vmac_size-len(vmac_bitstring))
+
+                # convert bitstring to hexstring and then to a mac address
+                return self.bitstring_to_mac_address(vmac_bitstring)
+
+    def participant_bit_mask(self, participant):
+        for i in range(0, len(self.supersets)):
+            if participant in self.supersets[i]:
+                participant_position = self.supersets[i].index(participant) + 1
+
+                # add participant identifier
+                vmac_bitstring = '{num:0{width}b}'.format(num=2**self.config.vmac_encoder.superset_id_size-1,
+                                                          width=self.config.vmac_encoder.superset_id_size)
+
+                vmac_bitstring += '{num:0{width}b}'.format(num=1, width=participant_position)
+                vmac_bitstring += '{num:0{width}b}'.format(num=0,
+                                                           width=self.config.vmac_encoder.vmac_size-len(vmac_bitstring))
+
+                # convert bitstring to hexstring and then to a mac address
+                return self.bitstring_to_mac_address(vmac_bitstring)
+
+    def participant_port_match(self, participant, port):
+        # port match
+        port_match_length = self.config.vmac_encoder.superset_id_size + self.config.vmac_encoder.max_superset_size
+        vmac_bitstring = '{num:0{width}b}'.format(num=port,
+                                                  width=port_match_length)
+        vmac_bitstring += '{num:0{width}b}'.format(num=participant,
+                                                  width=self.config.vmac_encoder.best_path_size)
+
+        # convert bitstring to hexstring and then to a mac address
+        return self.bitstring_to_mac_address(vmac_bitstring)
+
+    def participant_port_mask(self):
+        vmac_bitstring = '{num:0{width}b}'.format(num=2**self.config.vmac_encoder.vmac_size-1,
+                                                  width=self.config.vmac_encoder.vmac_size)
+
+        # convert bitstring to hexstring and then to a mac address
+        return self.bitstring_to_mac_address(vmac_bitstring)
+
+    def bitstring_to_mac_address(self, bit_string):
+        vmac_addr = '{num:0{width}x}'.format(num=int(bit_string,2), width=self.config.vmac_encoder.vmac_size/4)
         vmac_addr = ':'.join([vmac_addr[i]+vmac_addr[i+1] for i in range(0,self.config.vmac_encoder.vmac_size/4,2)])
 
         return vmac_addr
@@ -229,3 +299,6 @@ class SuperSetEncoderConfig(object):
         self.superset_threshold = superset_threshold
 
         self.vnhs = IPNetwork(vnhs)
+        self.num_vnhs_in_use = 0
+        self.vnh_2_prefix = {}
+        self.prefix_2_vnh = {}

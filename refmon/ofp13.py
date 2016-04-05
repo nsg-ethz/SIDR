@@ -6,7 +6,7 @@ from ryu.ofproto import inet
 
 
 class FlowMod():
-    def __init__(self, config, origin, flow_mod):
+    def __init__(self, config, flow_mod):
         self.mod_types = ["insert", "remove"]
         self.rule_types = ["inbound", "outbound", "main", "main-in", "main-out"]
         
@@ -16,7 +16,6 @@ class FlowMod():
         self.mod_type = None
         self.rule_type = None
 
-        self.origin = origin
         self.datapath = None
         self.table = None
         self.priority = None
@@ -32,18 +31,15 @@ class FlowMod():
     def validate_flow_mod(self, flow_mod):
         if "cookie" in flow_mod:
             if len(flow_mod["cookie"]) > 1:
-                self.cookie["cookie"] = int('{0:016b}'.format(int(self.origin))+'{0:016b}'.format(int(flow_mod["cookie"][0])),2)
-                self.cookie["mask"] = int('{0:016b}'.format(2**16-1) + '{0:016b}'.format(flow_mod["cookie"][1]),2)
+                self.cookie["cookie"] = int(flow_mod["cookie"][0])
+                self.cookie["mask"] = int(flow_mod["cookie"][1])
             else:
-                self.cookie["cookie"] = int('{0:016b}'.format(int(self.origin))+'{0:016b}'.format(int(flow_mod["cookie"])),2)
+                self.cookie["cookie"] = int(flow_mod["cookie"])
                 self.cookie["mask"] = 2**32-1
             if ("mod_type" in flow_mod and flow_mod["mod_type"] in self.mod_types):
                 self.mod_type = flow_mod["mod_type"]
                 if ("rule_type" in flow_mod and flow_mod["rule_type"] in self.rule_types):
-                    if flow_mod["rule_type"] in self.config.dp_alias:
-                        self.rule_type = self.config.dp_alias[flow_mod["rule_type"]]
-                    else:
-                        self.rule_type = flow_mod["rule_type"]
+                    self.rule_type = flow_mod["rule_type"]
 
                     if ("priority" in flow_mod):
                         self.priority = flow_mod["priority"]

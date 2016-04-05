@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+#***
+#*** "#SBATCH" lines must come before any non-blank, non-comment lines ***
+#***
+#
+#
+#SBATCH -N 4                  ## Node count
+#SBATCH --ntasks-per-node=25   ## Processors per node
+#SBATCH --mem=200G
+#SBATCH -t 2:00:00            ## Walltime
+#
+#SBATCH --mail-type=fail
+#SBATCH --mail-user=rbirkner@cs.princeton.edu
+#
+
+source ~/sdx_pypy/bin/activate
+module load mpi/openmpi-x86_64
+
+mpirun pypy /u/rbirkner/correctness/sdx-ib/mpi/bgp_paths.py /n/fs/scratch/rbirkner/${1}/ /n/fs/scratch/rbirkner/${1}/${2}/ ${3} ${4} /u/rbirkner/correctness/sdx-ib/ixp_dataset/ixp_dataset.json

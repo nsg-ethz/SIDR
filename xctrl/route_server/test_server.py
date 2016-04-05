@@ -10,7 +10,7 @@ from multiprocessing import Queue
 from collections import defaultdict
 
 
-class Server(object):
+class TestServer(object):
     def __init__(self, base_path, id):
         self.sender_queue = Queue()
         self.receiver_queue = Queue()

@@ -9,7 +9,7 @@ from webob import Response
 from ryu.app.wsgi import ControllerBase, route
 
 
-url = '/refmon/flowmod'
+url = '/refmon/flow_mods'
 
 class FlowModReceiver(ControllerBase):
     def __init__(self, req, link, data, **config):

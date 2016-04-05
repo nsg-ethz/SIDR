@@ -15,6 +15,7 @@ def get_all_participants_advertising(prefix, participants):
             
     return participant_set
 
+
 def get_all_as_paths(prefix, participants):
     as_sets = {}
    
@@ -26,11 +27,11 @@ def get_all_as_paths(prefix, participants):
     return as_sets
 
 
-def get_all_participant_sets(xrs):
+def get_all_participant_sets(config):
     participant_sets = []
      
-    for prefix in xrs.prefix_2_VNH:
-        participant_sets.append(get_all_participants_advertising(prefix, xrs.participants))
+    for prefix in config.vmac_encoder.prefix_2_vnh:
+        participant_sets.append(get_all_participants_advertising(prefix, config.participants))
             
     return participant_sets    
 
@@ -57,9 +58,11 @@ def bgp_update_peers(updates, config, route_server):
                     
                     if not bgp_routes_are_equal(route, prev_route):
                         # store announcement in output rib
-                        route_server.rib[participant_name].delete_route("output",prefix)
-                        route_server.rib[participant_name].add_route("output",prefix,route)
-                        
+                        route_server.rib[participant_name].delete_route("output", prefix)
+                        route_server.rib[participant_name].add_route("output", prefix, route)
+
+                        # we only care for changes in existing routes, as only in this case a gratuituous ARP has to
+                        # be sent
                         if prev_route:
                             changes.append({"participant": participant_name,
                                             "prefix": prefix})
@@ -71,14 +74,14 @@ def bgp_update_peers(updates, config, route_server):
                                 print announcement
                             route_server.server.sender_queue.put(announcement)
         
-        elif ('withdraw' in update):
+        elif 'withdraw' in update:
             as_sets = {}
             prefix = update['withdraw']['prefix']
             
             # send custom route advertisements based on peerings
             for participant_name in config.participants:
                 # only modify route advertisement if this route has been advertised to the participant
-                prev_route = route_server.rib[participant_name].get("output", prefix)
+                prev_route = route_server.rib[participant_name].get_route("output", prefix)
                 if prev_route: 
                     route = bgp_make_route_advertisement(route_server, participant_name, prefix)
                     # withdraw if no one advertises that route, else update reachability
@@ -101,7 +104,8 @@ def bgp_update_peers(updates, config, route_server):
                     else:
                         route_server.rib[participant_name].delete_route("output", prefix)
                         for neighbor in config.participant_2_portip[participant_name]:
-                            announcement = withdraw_route(neighbor, prefix, xrs.prefix_2_VNH[prefix])
+                            next_hop = config.vmac_encoder.prefix_2_vnh[prefix]
+                            announcement = withdraw_route(neighbor, prefix, next_hop)
                             if LOG:
                                 print announcement
                             route_server.server.sender_queue.put(announcement)
@@ -120,11 +124,13 @@ def bgp_routes_are_equal(route1, route2):
     return True
 
 
-def bgp_make_route_advertisement(xrs, participant_name, prefix):
-    as_path_attribute = get_best_path(xrs, participant_name, prefix)
+def bgp_make_route_advertisement(route_server, participant_name, prefix):
+    as_path_attribute = get_best_path(route_server, participant_name, prefix)
+
+    next_hop = route_server.config.vmac_encoder.prefix_2_vnh[prefix]
 
     if as_path_attribute:
-        route = {"next_hop": str(xrs.prefix_2_VNH[prefix]),
+        route = {"next_hop": str(next_hop),
                  "origin": "",
                  "as_path": as_path_attribute,
                  "communities": "",
@@ -134,19 +140,19 @@ def bgp_make_route_advertisement(xrs, participant_name, prefix):
     return None
 
 
-def get_best_path(xrs, participant_name, prefix):
-    route = xrs.participants[participant_name].get_route('local', prefix)
+def get_best_path(route_server, participant_name, prefix):
+    route = route_server.rib[participant_name].get_route('local', prefix)
     return route['as_path'] if route else ""
 
 
-def get_as_set(xrs, participant_name, peers, prefix):
+def get_as_set(config, participant_name, peers, prefix):
     as_path = []
     as_set = set()
     as_path_attribute = ""
     num_routes = 0
 
     for peer in peers:
-        route = xrs.participants[peer].get_route('input', prefix)
+        route = config.participants[peer].get_route('input', prefix)
         if route:
             as_set.update(set(route['as_path'].replace('(','').replace(')','').split()))
             num_routes += 1
@@ -166,54 +172,54 @@ def get_as_set(xrs, participant_name, peers, prefix):
     return as_path_attribute
 
 
-def get_policy_as_set(xrs, participant_name, prefix):
+def get_policy_as_set(config, participant_name, prefix):
     peers = []
-    peers.extend(xrs.participants[participant_name].fwd_peers)
+    peers.extend(config.participants[participant_name].fwd_peers)
 
-    route = xrs.participants[participant_name].get_route('local', prefix)
+    route = config.participants[participant_name].get_route('local', prefix)
     if route:
-        best_path_participant = xrs.portip_2_participant[route['next_hop']]
-        if (best_path_participant not in peers):
+        best_path_participant = config.portip_2_participant[route['next_hop']]
+        if best_path_participant not in peers:
             peers.append(best_path_participant)
 
-    as_path_attribute = get_as_set(xrs, participant_name, peers, prefix)
+    as_path_attribute = get_as_set(config, participant_name, peers, prefix)
     return as_path_attribute
 
 
-def get_blocking_policy_as_set(xrs, participant_name, prefix):
+def get_blocking_policy_as_set(config, participant_name, prefix):
     peers = []
-    peers.extend(xrs.participants[participant_name].fwd_peers)
+    peers.extend(config.participants[participant_name].fwd_peers)
 
     print "PEERS: "+str(peers)
 
-    route = xrs.participants[participant_name].get_route('local', prefix)
+    route = config.participants[participant_name].get_route('local', prefix)
     if route:
-        best_path_participant = xrs.portip_2_participant[route['next_hop']]
-        if (best_path_participant not in peers):
+        best_path_participant = config.portip_2_participant[route['next_hop']]
+        if best_path_participant not in peers:
             peers.append(best_path_participant)
 
     print "PEERS BEFORE: "+str(peers)
 
-    for peer in xrs.participants[participant_name].fwd_peers:
-        route = xrs.participants[peer].get_route('input', prefix)
+    for peer in config.participants[participant_name].fwd_peers:
+        route = config.participants[peer].get_route('input', prefix)
         if route:
             ases = route["as_path"].replace('(','').replace(')','').split()
             print "ASES: "+str(ases)
-            print str(xrs.participant_2_asn[participant_name])
-            if str(xrs.participant_2_asn[participant_name]) in ases:
+            print str(config.participant_2_asn[participant_name])
+            if str(config.participant_2_asn[participant_name]) in ases:
                 print "REMOVE: "+str(peer)
                 peers.remove(peer)
-                if route["prefix"] not in xrs.participants[participant_name].no_fwd_peers:
-                    xrs.participants[participant_name].no_fwd_peers[route["prefix"]] = []
-                xrs.participants[participant_name].no_fwd_peers[route["prefix"]].append(peer)
+                if route["prefix"] not in config.participants[participant_name].no_fwd_peers:
+                    config.participants[participant_name].no_fwd_peers[route["prefix"]] = []
+                config.participants[participant_name].no_fwd_peers[route["prefix"]].append(peer)
             else:
-                if route["prefix"] in xrs.participants[participant_name].no_fwd_peers:
-                    if peer in xrs.participants[participant_name].no_fwd_peers[route["prefix"]]:
-                        xrs.participants[participant_name].no_fwd_peers[route["prefix"]].remove(peer)
+                if route["prefix"] in config.participants[participant_name].no_fwd_peers:
+                    if peer in config.participants[participant_name].no_fwd_peers[route["prefix"]]:
+                        config.participants[participant_name].no_fwd_peers[route["prefix"]].remove(peer)
                     
     print "PEERS AFTER: "+str(peers)
 
-    as_path_attribute = get_as_set(xrs, participant_name, peers, prefix)
+    as_path_attribute = get_as_set(config, participant_name, peers, prefix)
     return as_path_attribute
 
 

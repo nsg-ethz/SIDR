@@ -13,12 +13,13 @@ VNH_ARP_PRIORITY = 5
 ARP_BROADCAST_PRIORITY = 5
 OUTBOUND_PRIORITY = 4
 FORWARDING_PRIORITY = 4
-
-INBOUND_PRIORITY = 3
-
-INBOUND_BIT_PRIORITY = 2
+INBOUND_FORWARDING_PRIORITY = 5
 
 DEFAULT_PRIORITY = 1
+
+PARTICIPANT_OUTBOUND = 2
+PARTICIPANT_INBOUND = 4
+TAGGING_PRIORITY = 2
 
 # Ports
 BGP = 179
@@ -46,15 +47,17 @@ OFPP_CONTROLLER = 0xfffffffd    # Send to controller.
 OFPP_LOCAL = 0xfffffffe         # Local openflow "port".
 OFPP_ANY = 0xffffffff               # Not associated with a physical port.
 
+
 class GSS(object):
-    def __init__(self, sender, config):
+    def __init__(self, sender, config, vmac_builder):
         self.sender = sender
         self.config = config
         self.fm_builder = None
+        self.vmac_builder = vmac_builder
 
     def handle_bgp(self, rule_type):
         # BGP traffic to route server
-        port = self.config.route_server.ports[0]
+        port = self.config.route_server.fabric_port
         action = {"fwd": [port.id]}
         match = {"eth_dst": port.mac, "tcp_src": BGP}
         self.fm_builder.add_flow_mod("insert", rule_type, BGP_PRIORITY, match, action)
@@ -63,7 +66,7 @@ class GSS(object):
         self.fm_builder.add_flow_mod("insert", rule_type, BGP_PRIORITY, match, action)
 
         # BGP traffic to participants
-        for participant in self.config.peers.values():
+        for participant in self.config.participants.values():
             for port in participant.ports:
                 match = {"eth_dst": port.mac, "tcp_src": BGP}
                 action = {"fwd": [port.id]}
@@ -73,18 +76,19 @@ class GSS(object):
 
     def handle_arp(self, rule_type):
         # direct ARP requests for VNHs to ARP proxy
-        port = self.config.arp_proxy.ports[0]
-        match = {"eth_type": ETH_TYPE_ARP, "arp_tpa": (str(self.config.vnhs.network), str(self.config.vnhs.netmask))}
+        port = self.config.arp_proxy.port
+        match = {"eth_type": ETH_TYPE_ARP,
+                 "arp_tpa": (str(self.config.vmac_encoder.vnhs.network), str(self.config.vmac_encoder.vnhs.netmask))}
         action = {"fwd": [port.id]}
         self.fm_builder.add_flow_mod("insert", rule_type, VNH_ARP_PRIORITY, match, action)
 
         # direct all ARP requests for the route server to it
-        port = self.config.route_server.ports[0]
+        port = self.config.route_server.fabric_port
         match = {"eth_type": ETH_TYPE_ARP, "eth_dst": port.mac}
         action = {"fwd": [port.id]}
         self.fm_builder.add_flow_mod("insert", rule_type, ARP_PRIORITY, match, action)
 
-        for participant in self.config.peers.values():
+        for participant in self.config.participants.values():
             # make sure ARP replies reach the participants
             for port in participant.ports:
                 match = {"eth_type": ETH_TYPE_ARP, "eth_dst": port.mac}
@@ -92,9 +96,9 @@ class GSS(object):
                 self.fm_builder.add_flow_mod("insert", rule_type, ARP_PRIORITY, match, action)
 
             # direct gratuituous ARPs only to the respective participant
-            vmac = self.vmac_builder.next_hop_match(participant.name, False)
-            vmac_mask = self.vmac_builder.next_hop_mask(False)
-            match = {"in_port": self.config.arp_proxy.ports[0].id, "eth_type": ETH_TYPE_ARP, "eth_dst": (vmac, vmac_mask)}
+            vmac = self.vmac_builder.best_path_match(participant.id)
+            vmac_mask = self.vmac_builder.best_path_mask()
+            match = {"in_port": self.config.arp_proxy.port.id, "eth_type": ETH_TYPE_ARP, "eth_dst": (vmac, vmac_mask)}
             action = {"set_eth_dst": MAC_BROADCAST}
             fwd = []
             for port in participant.ports:
@@ -105,83 +109,105 @@ class GSS(object):
         # flood ARP requests - but only on non switch-switch ports
         match = {"eth_type": ETH_TYPE_ARP, "eth_dst": MAC_BROADCAST}
         ports = []
-        for participant in self.config.peers.values():
+        for participant in self.config.participants.values():
             for port in participant.ports:
                 ports.append(port.id)
-        ports.append(self.config.arp_proxy.ports[0].id)
-        ports.append(self.config.route_server.ports[0].id)
+        ports.append(self.config.arp_proxy.port.id)
+        ports.append(self.config.route_server.fabric_port.id)
 
         action = {"fwd": ports}
         self.fm_builder.add_flow_mod("insert", rule_type, ARP_BROADCAST_PRIORITY, match, action)
 
-    def handle_participant_with_outbound(self, rule_type):
-        for participant in self.config.peers.values():
-            # outbound policies specified
-            if participant.outbound_rules:
-                mac = None
-                for port in participant.ports:
-                    if mac is None:
-                        mac = port.mac
-                    match = {"in_port": port.id}
-                    action = {"set_eth_src": mac, "fwd": ["outbound"]}
-                    self.fm_builder.add_flow_mod("insert", rule_type, OUTBOUND_PRIORITY, match, action)
+    def tagging(self, rule_type):
+        for participant in self.config.participants.values():
+            # multiple ports match
+            tag_mac = participant.ports[0].mac
 
-    def handle_participant_with_inbound(self, rule_type, mask_inbound_bit):
-        for participant in self.config.peers.values():
-            # inbound policies specified
-            if participant.inbound_rules:
-                i = 0
-                for port in participant.ports:
-                    vmac = self.vmac_builder.part_port_match(participant.name, i, False)
-                    i += 1
-                    vmac_mask = self.vmac_builder.part_port_mask(mask_inbound_bit)
-                    match = {"eth_dst": (vmac, vmac_mask)}
-                    action = {"set_eth_dst": port.mac, "fwd": [port.id]}
-                    self.fm_builder.add_flow_mod("insert", rule_type, FORWARDING_PRIORITY, match, action)
+            for i in range(1, len(participant.ports)):
+                port_id = participant.ports[i].id
+                match = {"in_port": port_id}
+                action = {"set_eth_src": tag_mac, "fwd": ["outbound"]}
+                self.fm_builder.add_flow_mod("insert", rule_type, TAGGING_PRIORITY, match, action)
 
     def default_forwarding(self, rule_type):
-        for participant in self.config.peers.values():
-            # default forwarding
-            if not participant.inbound_rules:
-                vmac = self.vmac_builder.next_hop_match(participant.name, False)
-                vmac_mask = self.vmac_builder.next_hop_mask(False)
-                port = participant.ports[0]
+        for participant in self.config.participants.values():
+            # multiple ports match
+            for i in range(1, len(participant.ports)):
+                port = participant.ports[i]
+                vmac = self.vmac_builder.participant_port_match(participant.id, i)
+                vmac_mask = self.vmac_builder.participant_port_mask()
                 match = {"eth_dst": (vmac, vmac_mask)}
                 action = {"set_eth_dst": port.mac, "fwd": [port.id]}
-                self.fm_builder.add_flow_mod("insert", rule_type, FORWARDING_PRIORITY, match, action)
+                self.fm_builder.add_flow_mod("insert", rule_type, INBOUND_FORWARDING_PRIORITY, match, action)
 
-    def default_forwarding_inbound(self, rule_type, fwd):
-        # set the inbound bit to zero
-        for participant in self.config.peers.values():
-            if participant.inbound_rules:
-                port = participant.ports[0]
-                vmac_match = self.vmac_builder.next_hop_match(participant.name, False)
-                vmac_match_mask = self.vmac_builder.next_hop_mask(False)
-                vmac_action = self.vmac_builder.part_port_match(participant.name, 0, False)
-                match = {"eth_dst": (vmac_match, vmac_match_mask)}
-                action = {"set_eth_dst": vmac_action, "fwd": [fwd]}
-                self.fm_builder.add_flow_mod("insert", "inbound", INBOUND_PRIORITY, match, action)
-
-    def handle_inbound(self, rule_type):
-        vmac = self.vmac_builder.only_first_bit()
-        match = {"eth_dst": (vmac, vmac)}
-        action = {"fwd": ["outbound"]}
-        self.fm_builder.add_flow_mod("insert", rule_type, INBOUND_BIT_PRIORITY, match, action)
+            # default forwarding
+            vmac = self.vmac_builder.best_path_match(participant.id)
+            vmac_mask = self.vmac_builder.best_path_mask()
+            port = participant.ports[0]
+            match = {"eth_dst": (vmac, vmac_mask)}
+            action = {"set_eth_dst": port.mac, "fwd": [port.id]}
+            self.fm_builder.add_flow_mod("insert", rule_type, FORWARDING_PRIORITY, match, action)
 
     def match_any_fwd(self, rule_type, dst):
         match = {}
         action = {"fwd": [dst]}
         self.fm_builder.add_flow_mod("insert", rule_type, DEFAULT_PRIORITY, match, action)
 
-    def delete_flow_rule(self, rule_type, cookie, cookie_mask):
-        self.fm_builder.delete_flow_mod("remove", rule_type, cookie, cookie_mask)
+    def delete_flow_rule(self, rule_type, cookie):
+        self.fm_builder.delete_flow_mod("remove", rule_type, cookie)
+        self.sender.send(self.fm_builder.get_msg())
+
+    def add_flow_rule(self, participant, rule_type, match, fwd):
+        if rule_type == "outbound":
+            priority = PARTICIPANT_OUTBOUND
+            action = self.get_outbound_action(fwd)
+            action["fwd"] = ["inbound"]
+
+            # augment match with vmac to ensure correctness
+            vmac_match = self.vmac_builder.participant_bit_match(fwd)
+            vmac_match_mask = self.vmac_builder.participant_bit_mask(fwd)
+            match["eth_dst"] = (vmac_match, vmac_match_mask)
+
+            # match on mac tag to ensure isolation
+            tag_mac = self.config.participants[participant].ports[0].mac
+            match["eth_src"] = tag_mac
+        elif rule_type == "inbound":
+            priority = PARTICIPANT_INBOUND
+            action = self.get_inbound_action(participant, fwd)
+            action["fwd"] = ["main-out"]
+
+            # augment match with vmac to ensure correctness
+            vmac_match = self.vmac_builder.best_path_match(participant)
+            vmac_match_mask = self.vmac_builder.best_path_mask()
+            match["eth_dst"] = (vmac_match, vmac_match_mask)
+        else:
+            return -1
+
+        cookie = self.fm_builder.add_flow_mod("insert", rule_type, priority, match, action)
+        msg = self.fm_builder.get_msg()
+        print str(msg)
+        self.sender.send(msg)
+        return cookie
+
+    def update_flow_rule(self, participant, rule_type, cookie, match, fwd_participant):
+        self.delete_flow_rule(rule_type, cookie)
+        cookie = self.add_flow_rule(participant, rule_type, match, fwd_participant)
+        return cookie
+
+    def get_inbound_action(self, participant, port):
+        vmac = self.vmac_builder.participant_port_match(participant, port)
+        return {"set_eth_dst": vmac}
+
+    def get_outbound_action(self, participant):
+        vmac = self.vmac_builder.best_path_match(participant)
+        return {"set_eth_dst": vmac}
 
 
 class GSSmT(GSS):
-    def __init__(self, sender, config):
-        super(GSSmT, self).__init__(sender, config)
+    def __init__(self, sender, config, vmac_builder):
+        super(GSSmT, self).__init__(sender, config, vmac_builder)
         self.logger = logging.getLogger('GSSmT')
-        self.fm_builder = FlowModMsgBuilder(0, )
+        self.fm_builder = FlowModMsgBuilder()
 
     def start(self):
         self.logger.info('start')
@@ -199,28 +225,22 @@ class GSSmT(GSS):
         self.logger.info('create flow mods to handle ARP traffic')
         self.handle_arp("main-in")
 
-        # handle all participant traffic depending on whether they specified inbound/outbound policies
+        # tag participant packets
         self.logger.info('create flow mods to handle participant traffic')
-        # outbound policies specified
-        self.handle_participant_with_outbound("main-in")
-        # direct packets with inbound bit set to the inbound switch
-        self.handle_inbound("main-in")
-        # whatever doesn't match on any other rule, send to inbound switch
-        self.match_any_fwd("main-in", "main-out")
+        self.tagging("main-in")
+
+        # whatever doesn't match on any other rule, send to outbound switch
+        self.match_any_fwd("main-in", "outbound")
 
         # OUTBOUND SWITCH
         # whatever doesn't match on any other rule, send to inbound switch
         self.match_any_fwd("outbound", "inbound")
 
         # INBOUND SWITCH
-        # set the inbound bit to zero
-        self.default_forwarding_inbound("inbound", "main-out")
         # send all other packets to main
         self.match_any_fwd("inbound", "main-out")
 
         # MAIN-OUT TABLE
-        # inbound policies specified
-        self.handle_participant_with_inbound("main-out", False)
         # default forwarding
         self.default_forwarding("main-out")
 

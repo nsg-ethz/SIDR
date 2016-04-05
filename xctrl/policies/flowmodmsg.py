@@ -6,13 +6,14 @@ import json
 
 
 class FlowModMsgBuilder(object):
-    def __init__(self, participant):
-        self.participant = participant
-        self.flow_mods = []
+    def __init__(self):
+        self.flow_mods = list()
+        self.flow_mod_count = 0
 
     def add_flow_mod(self, mod_type, rule_type, priority, match, action, cookie = None):
         if cookie is None:
-            cookie = (len(self.flow_mods)+1, 65535)
+            self.flow_mod_count += 1
+            cookie = (self.flow_mod_count, 2**32 - 1)
 
         fm = {
                "cookie": cookie,
@@ -27,7 +28,7 @@ class FlowModMsgBuilder(object):
 
         return cookie
 
-    def delete_flow_mod(self, mod_type, rule_type, cookie, cookie_mask):
+    def delete_flow_mod(self, mod_type, rule_type, cookie, cookie_mask=2**32 - 1):
         fm = {
             "cookie": (cookie, cookie_mask),
             "mod_type": mod_type,
@@ -38,10 +39,9 @@ class FlowModMsgBuilder(object):
 
     def get_msg(self):
         msg = {
-                "auth_info": {
-                               "participant" : self.participant,
-                             },
-                "flow_mods": self.flow_mods
+                "flow_mods": list(self.flow_mods)
               }
+
+        self.flow_mods = list()
 
         return msg

@@ -21,9 +21,10 @@ from policies.policies import PolicyHandler
 
 
 class XCTRL(object):
-    def __init__(self, sdx_id, base_path, config_file, debug):
+    def __init__(self, sdx_id, base_path, config_file, debug, test):
         self.logger = logging.getLogger("XCTRL")
         self.debug = debug
+        self.test = test
         if self.debug:
             self.logger.setLevel(logging.DEBUG)
         self.logger.info('init')
@@ -36,36 +37,43 @@ class XCTRL(object):
 
         self.run = False
 
+        if self.test:
+            self.thread_modules = ["route_server", "loop_detection", "policy_handler"]
+        else:
+            self.thread_modules = ["route_server", "loop_detection", "policy_handler", "arp_proxy"]
+
         self.modules = dict()
         self.threads = dict()
 
     def start(self):
         # Start all modules
         # route server
-        self.modules["route_server"] = RouteServer(self.config, self.event_queue, self.debug, None)
+        self.modules["route_server"] = RouteServer(self.config, self.event_queue, self.debug, self.test)
 
         # loop detection - needs access to RIB
         self.modules["loop_detection"] = LoopDetector(self.config, self.event_queue, self.debug,
                                                       self.modules["route_server"].rib_interface,
-                                                      None)
+                                                      None, self.test)
 
         # VMAC encoder - needs access to RIB, CIB
-        self.modules["vmac_encoder"] = None
-        #self.modules["vmac_encoder"] = SuperSetEncoder(self.config, self.event_queue, self.debug,
-        #                                               self.modules["route_server"].rib_interface,
-        #                                               self.modules["loop_detection"].forbidden_paths)
+        self.modules["vmac_encoder"] = SuperSetEncoder(self.config, self.event_queue, self.debug,
+                                                       self.modules["route_server"].rib_interface,
+                                                       self.modules["loop_detection"].forbidden_paths,
+                                                       self.test)
 
         # policies - needs access to Correctness, VMAC encoder
         self.modules["policy_handler"] = PolicyHandler(self.config, self.event_queue, self.debug,
                                                        self.modules["vmac_encoder"],
-                                                       self.modules["loop_detection"])
+                                                       self.modules["loop_detection"],
+                                                       self.test)
         self.modules["loop_detection"].policy_handler = self.modules["policy_handler"]
 
         # arp proxy - needs access to VMAC encoder
-        #self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.debug,
-        #                                     self.modules["vmac_encoder"])
+        self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.debug,
+                                             self.modules["vmac_encoder"],
+                                             self.test)
 
-        for name, module in self.modules.iteritems():
+        for name in self.thread_modules:
             if self.modules[name]:
                 self.threads[name] = Thread(target=self.modules[name].start)
                 self.threads[name].daemon = True
@@ -84,28 +92,38 @@ class XCTRL(object):
             if isinstance(event, XCTRLEvent):
                 if event.type == "RIB UPDATE":
                     # update vnh assignment
-                    #self.modules["vmac_encoder"].vnh_assignment(event.data)
+                    self.modules["vmac_encoder"].vnh_assignment(event.data)
 
                     # update supersets
-                    #self.modules["vmac_encoder"].update_supersets(event.data)
+                    sdx_messages = self.modules["vmac_encoder"].update_supersets(event.data)
 
+                    # update policies if supersets changed
+                    if sdx_messages["type"] == "new":
+                        # policy module
+                        self.modules["policy_handler"].update_policies()
+
+                    # loop detection
                     self.modules["loop_detection"].rib_update(event.data)
 
-                if event.type == "SUPERSET CHANGE":
-                    # notify policy module about superset change
-                    self.modules["policies"].supersets_changed(event.data)
+                    # notify all participants about the RIB changes
+                    changes = self.modules["route_server"].update_neighbors(event.data)
 
-                    # Send Gratuitous ARPs
-                    for change in event.data:
+                    # Renew ARP
+                    for change in changes:
+                        self.modules["arp_proxy"].send_gratuitous_arp(change)
+
+                elif event.type == "FORBIDDEN PATHS UPDATE":
+                    # Renew ARP
+                    for change in changes:
                         self.modules["arp_proxy"].send_gratuitous_arp(change)
 
     def stop(self):
         self.run = False
 
         # Stop all Modules and Join all Threads
-        for module in self.modules.values():
-            if module:
-                module.stop()
+        for name in self.thread_modules:
+            if self.modules[name]:
+                self.modules[name].stop()
 
         for thread in self.threads.values():
             thread.join()
@@ -118,10 +136,10 @@ def main(argv):
     # locate config file
     base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples",
                                              argv.dir))
-    config_file = os.path.join(base_path, "config", "sdx_global.cfg")
+    config_file = os.path.join(base_path, "global.cfg")
 
     # start route server
-    xctrl_instance = XCTRL(int(argv.sdxid), base_path, config_file, argv.debug)
+    xctrl_instance = XCTRL(int(argv.sdxid), base_path, config_file, argv.debug, argv.test)
     xctrl_thread = Thread(target=xctrl_instance.start)
     xctrl_thread.start()
 
@@ -137,6 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('dir', help='the directory of the example')
     parser.add_argument('sdxid', help='SDX identifier')
     parser.add_argument('-d', '--debug', help='enable debug output', action='store_true')
+    parser.add_argument('-t', '--test', help='test mode', action='store_true')
     args = parser.parse_args()
 
     main(args)
