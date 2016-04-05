@@ -1,7 +1,7 @@
 # Loops2 Test
 
 ## Setup
-![Loops2 Setup](https://drive.google.com/open?id=0B273jByxJR-IdF9yblRVOFFLaEE)
+[[setup.PNG|alt=Loops2 Setup]]
 
 The two loop tests test how SIDR handles two incoming correcntess messages.
 
