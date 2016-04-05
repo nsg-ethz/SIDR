@@ -1,7 +1,7 @@
 # Forward Test
 
 ## Setup
-![Forward Setup](https://raw.githubusercontent.com/nsg-ethz/supercharged_sdx/correctness/examples/test_forward/setup.png)
+![Forward Setup](setup.PNG)
 
 Here, we test whether an SDX without any policies/deflections correctly relays the correctness messages to the next SDX on the path. Additionally, we also test how SIDR reacts to changes in the topology (BGP updates).
 
