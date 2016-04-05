@@ -1,7 +1,7 @@
 # Loops2 Test
 
 ## Setup
-[[setup.PNG|alt=Loops2 Setup]]
+![Loops2 Setup](setup.PNG)
 
 The two loop tests test how SIDR handles two incoming correcntess messages.
 
