@@ -1,7 +1,7 @@
 # Loops2 Test
 
 ## Setup
-![Loops2 Setup](https://raw.githubusercontent.com/nsg-ethz/supercharged_sdx/correctness/examples/test_loops2/setup.png)
+![Loops2 Setup](https://raw.githubusercontent.com/nsg-ethz/supercharged_sdx/correctness/examples/test_loops2/setup.PNG)
 
 The two loop tests test how SIDR handles two incoming correcntess messages.
 
