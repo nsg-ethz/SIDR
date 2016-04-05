@@ -1,7 +1,7 @@
 # Basic Test
 
 ## Setup
-![Basic Setup](https://raw.githubusercontent.com/nsg-ethz/supercharged_sdx/correctness/examples/test_basic/setup.png)
+![Basic Setup](setup.PNG)
 
 This is a basic test to see whether SIDR works as it should.
 
