@@ -21,10 +21,25 @@ from policies.policies import PolicyHandler
 
 
 class XCTRL(object):
-    def __init__(self, sdx_id, base_path, config_file, debug, test):
+    def __init__(self,
+                 sdx_id,
+                 base_path,
+                 config_file,
+                 debug,
+                 test,
+                 rib_timing,
+                 policy_timing,
+                 notification_timing,
+                 no_notifications):
+
         self.logger = logging.getLogger("XCTRL")
         self.debug = debug
         self.test = test
+        self.no_notifications = no_notifications
+
+        self.rib_timing = rib_timing
+        self.policy_timing = policy_timing
+        self.notification_timing = notification_timing
         if self.debug:
             self.logger.setLevel(logging.DEBUG)
         self.logger.info('init')
@@ -51,25 +66,39 @@ class XCTRL(object):
         self.modules["route_server"] = RouteServer(self.config, self.event_queue, self.debug, self.test)
 
         # loop detection - needs access to RIB
-        self.modules["loop_detection"] = LoopDetector(self.config, self.event_queue, self.debug,
+        self.modules["loop_detection"] = LoopDetector(self.config,
+                                                      self.event_queue,
+                                                      self.debug,
                                                       self.modules["route_server"].rib_interface,
-                                                      None, self.test)
+                                                      None,
+                                                      self.test,
+                                                      self.no_notifications,
+                                                      self.rib_timing,
+                                                      self.notification_timing)
 
         # VMAC encoder - needs access to RIB, CIB
-        self.modules["vmac_encoder"] = SuperSetEncoder(self.config, self.event_queue, self.debug,
+        self.modules["vmac_encoder"] = SuperSetEncoder(self.config,
+                                                       self.event_queue,
+                                                       self.debug,
                                                        self.modules["route_server"].rib_interface,
                                                        self.modules["loop_detection"].forbidden_paths,
                                                        self.test)
 
         # policies - needs access to Correctness, VMAC encoder
-        self.modules["policy_handler"] = PolicyHandler(self.config, self.event_queue, self.debug,
+        self.modules["policy_handler"] = PolicyHandler(self.config,
+                                                       self.event_queue,
+                                                       self.debug,
                                                        self.modules["vmac_encoder"],
                                                        self.modules["loop_detection"],
-                                                       self.test)
+                                                       self.test,
+                                                       self.policy_timing)
+
         self.modules["loop_detection"].policy_handler = self.modules["policy_handler"]
 
         # arp proxy - needs access to VMAC encoder
-        self.modules["arp_proxy"] = ARPProxy(self.config, self.event_queue, self.debug,
+        self.modules["arp_proxy"] = ARPProxy(self.config,
+                                             self.event_queue,
+                                             self.debug,
                                              self.modules["vmac_encoder"],
                                              self.test)
 
@@ -91,6 +120,7 @@ class XCTRL(object):
 
             if isinstance(event, XCTRLEvent):
                 if event.type == "RIB UPDATE":
+
                     # update vnh assignment
                     self.modules["vmac_encoder"].vnh_assignment(event.data)
 
@@ -139,7 +169,15 @@ def main(argv):
     config_file = os.path.join(base_path, "global.cfg")
 
     # start route server
-    xctrl_instance = XCTRL(int(argv.sdxid), base_path, config_file, argv.debug, argv.test)
+    xctrl_instance = XCTRL(int(argv.sdxid),
+                           base_path,
+                           config_file,
+                           argv.debug,
+                           argv.test,
+                           argv.ribtiming,
+                           argv.policytiming,
+                           argv.notificationtiming,
+                           argv.nonotifications)
     xctrl_thread = Thread(target=xctrl_instance.start)
     xctrl_thread.start()
 
@@ -156,6 +194,10 @@ if __name__ == '__main__':
     parser.add_argument('sdxid', help='SDX identifier')
     parser.add_argument('-d', '--debug', help='enable debug output', action='store_true')
     parser.add_argument('-t', '--test', help='test mode', action='store_true')
+    parser.add_argument('-nn', '--nonotifications', help='no notifications', action='store_true')
+    parser.add_argument('-rt', '--ribtiming', help='rib update timing', action='store_true')
+    parser.add_argument('-pt', '--policytiming', help='policy activation timing', action='store_true')
+    parser.add_argument('-nt', '--notificationtiming', help='notification timing', action='store_true')
     args = parser.parse_args()
 
     main(args)

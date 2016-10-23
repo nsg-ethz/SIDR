@@ -4,6 +4,7 @@
 
 import json
 import logging
+import time
 
 from multiprocessing.connection import Listener
 from collections import defaultdict
@@ -13,12 +14,15 @@ from lib import XCTRLModule
 
 
 class PolicyHandler(XCTRLModule):
-    def __init__(self, config, event_queue, debug, vmac_encoder, loop_detector, test):
+    def __init__(self, config, event_queue, debug, vmac_encoder, loop_detector, test, timing):
         super(PolicyHandler, self).__init__(config, event_queue, debug)
         self.logger = logging.getLogger('xctrl')
         self.logger.info('init')
 
         self.test = test
+        self.timing = timing
+        if self.timing:
+            self.timing_file = 'policy_timing_' + str(int(time.time())) + '.log'
 
         self.loop_detector = loop_detector
         self.vmac_encoder = vmac_encoder
@@ -54,6 +58,10 @@ class PolicyHandler(XCTRLModule):
             policies = json.loads(tmp)
 
             i = 0
+
+            if self.timing:
+                start_time = time.clock()
+
             for policy in policies:
                 if policy["type"] == "outbound":
                     safe_to_install = self.loop_detector.activate_policy(policy["participant"], policy["action"]["fwd"])
@@ -77,6 +85,11 @@ class PolicyHandler(XCTRLModule):
                                                                                        fwd))
 
                     i += 1
+
+            if self.timing:
+                end_time = time.clock()
+                with open(self.timing_file, "a") as outfile:
+                    outfile.write(str(end_time - start_time) + '\n')
 
             reply = "Total Received Policies: " + str(len(policies)) + " Accepted Policies: " + str(i)
             conn.send(reply)
@@ -104,10 +117,11 @@ class PolicyHandler(XCTRLModule):
         # after change of supersets, update policies in the dataplane, only outbound policies need to be changed
         for policies in self.policies.values():
             for policy in policies["outbound"]:
-                cookie = self.controller.update_flow_rule("outbound",
-                                                          policy.cookie,
-                                                          policy.match,
-                                                          policy.forward_participant)
+                if not self.test:
+                    cookie = self.controller.update_flow_rule("outbound",
+                                                              policy.cookie,
+                                                              policy.match,
+                                                              policy.forward_participant)
 
 
 class PolicyHandlerConfig(object):

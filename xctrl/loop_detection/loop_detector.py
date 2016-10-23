@@ -3,8 +3,9 @@
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
 import json
+
 from random import randint
-from time import time
+from time import time, clock
 from collections import defaultdict
 from multiprocessing.connection import Listener, Client
 from multiprocessing.queues import Queue
@@ -17,7 +18,7 @@ from cib import CIB
 
 
 class LoopDetector(XCTRLModule):
-    def __init__(self, config, event_queue, debug, rib, policy_handler, test):
+    def __init__(self, config, event_queue, debug, rib, policy_handler, test, no_notifications, rib_timing, notification_timing):
         super(LoopDetector, self).__init__(config, event_queue, debug)
 
         self.cib = CIB(self.config.id)
@@ -31,6 +32,18 @@ class LoopDetector(XCTRLModule):
         self.listener = Listener((self.config.sdx.address, self.config.loop_detector.port), authkey=None)
         self.msg_in_queue = Queue(1000)
         self.msg_out_queue = Queue(1000)
+
+        self.no_notifications = no_notifications
+
+        print "LOOP DETECTOR: " + str(rib_timing)
+
+        self.rib_timing = rib_timing
+        if self.rib_timing:
+            self.rib_timing_file = 'rib_timing_' + str(int(time())) + '.log'
+
+        self.notification_timing = notification_timing
+        if self.notification_timing:
+            self.notification_timing_file = 'notification_timing_' + str(int(time())) + '.log'
 
     def start(self):
         self.run = True
@@ -121,6 +134,9 @@ class LoopDetector(XCTRLModule):
             self.logger.debug("Received Correctness Message from " + str(msg["sender_sdx"]) +
                               " concerning " + str(msg["prefix"]))
 
+            if self.notification_timing:
+                start_time = clock()
+
             changes = list()
             ingress_participant = self.config.asn_2_participant[msg["ingress_participant"]]
 
@@ -177,6 +193,11 @@ class LoopDetector(XCTRLModule):
                         event = XCTRLEvent("LoopDetector", "FORBIDDEN PATHS CHANGE", changes)
                         self.event_queue.put(event)
 
+            if self.notification_timing:
+                end_time = clock()
+                with open(self.notification_timing_file, "a") as outfile:
+                    outfile.write(str(end_time - start_time) + '\n')
+
     def rib_update(self, updates):
         """
         Updates the CIB and notifies all neighbor SDXes after a change in the RIB
@@ -185,6 +206,9 @@ class LoopDetector(XCTRLModule):
         """
 
         self.logger.debug("RIB Update")
+
+        if self.rib_timing:
+            start_time = clock()
 
         for tmp_update in updates:
             if 'announce' in tmp_update:
@@ -240,7 +264,12 @@ class LoopDetector(XCTRLModule):
 
                 self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
 
-            self.logger.debug("Done processing RIB Update")
+        if self.rib_timing:
+            end_time = clock()
+            with open(self.rib_timing_file, "a") as outfile:
+                outfile.write(str(end_time - start_time) + '\n')
+
+        self.logger.debug("Done processing RIB Update")
 
     def is_policy_active(self, ingress_participant, egress_participant):
         """
@@ -289,39 +318,40 @@ class LoopDetector(XCTRLModule):
         :return:None
         """
 
-        old_sdxes = set()
-        new_sdxes = set()
-        if not old_cib_entry and not new_cib_entry:
-            return
-        if old_cib_entry:
-            old_sdxes = self.config.loop_detector.asn_2_sdx[old_cib_entry["receiver_participant"]]
-            withdraw_msg = {"type": "withdraw",
-                            "prefix": old_cib_entry["prefix"],
-                            "sender_sdx": self.config.id,
-                            "sdx_set": [],
-                            "ingress_participant": old_cib_entry["receiver_participant"],
-                            "timestamp": timestamp,
-                            "random_value": random_value
-                            }
-        if new_cib_entry:
-            new_sdxes = self.config.loop_detector.asn_2_sdx[new_cib_entry["receiver_participant"]]
-            announce_msg = {"type": "announce",
-                            "prefix": new_cib_entry["prefix"],
-                            "sender_sdx": self.config.id,
-                            "sdx_set": new_cib_entry["sdx_set"],
-                            "ingress_participant": new_cib_entry["receiver_participant"],
-                            "timestamp": timestamp,
-                            "random_value": random_value
-                            }
-        if new_cib_entry and old_cib_entry:
-            old_sdxes = old_sdxes.difference(new_sdxes)
-            if not update:
-                new_sdxes = new_sdxes.difference(old_sdxes)
+        if not self.no_notifications:
+            old_sdxes = set()
+            new_sdxes = set()
+            if not old_cib_entry and not new_cib_entry:
+                return
+            if old_cib_entry:
+                old_sdxes = self.config.loop_detector.asn_2_sdx[old_cib_entry["receiver_participant"]]
+                withdraw_msg = {"type": "withdraw",
+                                "prefix": old_cib_entry["prefix"],
+                                "sender_sdx": self.config.id,
+                                "sdx_set": [],
+                                "ingress_participant": old_cib_entry["receiver_participant"],
+                                "timestamp": timestamp,
+                                "random_value": random_value
+                                }
+            if new_cib_entry:
+                new_sdxes = self.config.loop_detector.asn_2_sdx[new_cib_entry["receiver_participant"]]
+                announce_msg = {"type": "announce",
+                                "prefix": new_cib_entry["prefix"],
+                                "sender_sdx": self.config.id,
+                                "sdx_set": new_cib_entry["sdx_set"],
+                                "ingress_participant": new_cib_entry["receiver_participant"],
+                                "timestamp": timestamp,
+                                "random_value": random_value
+                                }
+            if new_cib_entry and old_cib_entry:
+                old_sdxes = old_sdxes.difference(new_sdxes)
+                if not update:
+                    new_sdxes = new_sdxes.difference(old_sdxes)
 
-        for sdx in old_sdxes:
-            self.msg_out_queue.put((sdx, withdraw_msg))
-        for sdx in new_sdxes:
-            self.msg_out_queue.put((sdx, announce_msg))
+            for sdx in old_sdxes:
+                self.msg_out_queue.put((sdx, withdraw_msg))
+            for sdx in new_sdxes:
+                self.msg_out_queue.put((sdx, announce_msg))
 
     def update_forbidden_paths(self, prefix, as_path, sdx_set, ingress_participant, egress_participant):
         """
