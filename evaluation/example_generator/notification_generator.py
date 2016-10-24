@@ -16,6 +16,7 @@ def main(argv):
     num_notifications = int(argv.num_notifications)
     prefix = argv.prefix
 
+    types = ['announce', 'withdraw']
     sender_sdxes = argv.sender_sdxes.split(",")
 
     if not ':' in argv.ingress_participants:
@@ -25,15 +26,24 @@ def main(argv):
         ingress_participants = range(int(tmp_from), int(tmp_to) + 1)
 
     for ingress_participant in ingress_participants:
+        prev_announce = False
         for i in range(0, num_notifications):
             s_time = start_time + curr_notification * interval
             curr_notification += 1
 
             sender_sdx = random.choice(sender_sdxes)
 
+            if prev_announce:
+                msg_type = random.choice(types)
+                if msg_type == 'withdraw':
+                    prev_announce = False
+            else:
+                msg_type = 'announce'
+                prev_announce = True
+
             tmp_notification = {
                 "time": s_time,
-                "type": "announce",
+                "type": msg_type,
                 "prefix": prefix,
                 "sender_sdx": sender_sdx,
                 "sdx_set": sender_sdx,

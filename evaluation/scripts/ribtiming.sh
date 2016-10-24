@@ -21,6 +21,6 @@ for i in 2 50 100 150 200 250 300 350 400 450 500; do
 	
 	python evaluation/example_generator/notification_generator.py 2,3 2:"$num_participants" 100.0.0.0/16 1 2 0 examples/"${example_name}"/notifications/
 	
-	python evaluation/example_generator/policy_generator.py 1:"$num_participants" 1 1 32 0 examples/"${example_name}"/sdx_1/
+	python evaluation/example_generator/policy_generator.py 2:"$num_participants" 1 1 32 0 examples/"${example_name}"/sdx_1/
 
 done 

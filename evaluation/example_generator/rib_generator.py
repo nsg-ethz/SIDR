@@ -62,11 +62,9 @@ class IPAddressGenerator(object):
     def __init__(self, network):
         self.network = IPNetwork(network)
         self.start = self.network.value
-        self.current = 0
 
-    def get_address(self):
-        self.current += 1
-        return str(IPAddress(self.start + self.current))
+    def get_address(self, i):
+        return str(IPAddress(self.start + i))
 
 
 ''' main '''
