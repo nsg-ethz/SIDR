@@ -37,7 +37,7 @@ def main(argv):
                 "prefix": prefix,
                 "sender_sdx": sender_sdx,
                 "sdx_set": sender_sdx,
-                "ingress_participant": ingress_participant,
+                "ingress_participant": ingress_participant + 100,
                 "timestamp": time.time(),
                 "random_value": random.randint(0, 10000)
             }
@@ -52,7 +52,7 @@ def main(argv):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sender_sdxes', help='comma separated list of senders sdxes')
-    parser.add_argument('ingress_participants', help='range of ingress participants 1:100')
+    parser.add_argument('ingress_participants', help='participant id - range of ingress participants 1:100')
     parser.add_argument('prefix', help='prefix')
     parser.add_argument('num_notifications', help='number of notifications per participant')
     parser.add_argument('start_time', help='start time')

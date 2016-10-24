@@ -52,8 +52,8 @@ def main(argv):
 ''' main '''
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('from_participants', help='policy ingress format 1:100')
-    parser.add_argument('to_participants', help='policy egress - format 1:100')
+    parser.add_argument('from_participants', help='participant id - policy ingress format 1:100')
+    parser.add_argument('to_participants', help='participant id - policy egress - format 1:100')
     parser.add_argument('num_policies', help='number policies')
     parser.add_argument('start_time', help='time of first policy installation')
     parser.add_argument('interval', help='interval')

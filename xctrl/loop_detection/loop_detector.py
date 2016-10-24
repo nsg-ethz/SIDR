@@ -16,6 +16,8 @@ from lib import XCTRLModule, XCTRLEvent
 
 from cib import CIB
 
+LOG = False
+
 
 class LoopDetector(XCTRLModule):
     def __init__(self, config, event_queue, debug, rib, policy_handler, test, no_notifications, rib_timing, notification_timing):
@@ -34,8 +36,6 @@ class LoopDetector(XCTRLModule):
         self.msg_out_queue = Queue(1000)
 
         self.no_notifications = no_notifications
-
-        print "LOOP DETECTOR: " + str(rib_timing)
 
         self.rib_timing = rib_timing
         if self.rib_timing:
@@ -84,8 +84,9 @@ class LoopDetector(XCTRLModule):
 
         prefixes = self.rib.get_all_prefixes_advertised(egress_participant, ingress_participant)
         for prefix in prefixes:
-            print "prefix: " + str(prefix) + ", egress: " + str(egress_participant)
-            print "forbidden: " + str(self.forbidden_paths)
+            if LOG:
+                print "prefix: " + str(prefix) + ", egress: " + str(egress_participant)
+                print "forbidden: " + str(self.forbidden_paths)
             if egress_participant not in self.forbidden_paths[ingress_participant][prefix]:
                 allowed_prefixes.append(prefix)
 
@@ -125,78 +126,85 @@ class LoopDetector(XCTRLModule):
 
         while self.run:
             try:
-                msg = self.msg_in_queue.get(True, 1)
+                messages = self.msg_in_queue.get(True, 1)
 
             except Empty:
                 # self.logger.debug("Empty Queue")
                 continue
 
-            self.logger.debug("Received Correctness Message from " + str(msg["sender_sdx"]) +
-                              " concerning " + str(msg["prefix"]))
+            if not isinstance(messages, list):
+                msg = [messages]
+            else:
+                msg = messages
 
-            if self.notification_timing:
-                start_time = clock()
+            for msg in messages:
 
-            changes = list()
-            ingress_participant = self.config.asn_2_participant[msg["ingress_participant"]]
+                self.logger.debug("Received Correctness Message from " + str(msg["sender_sdx"]) +
+                                  " concerning " + str(msg["prefix"]))
 
-            ci_update, old_ci_entry, new_ci_entry = self.cib.update_in(msg["type"],
-                                                                       ingress_participant,
-                                                                       msg["prefix"],
-                                                                       msg["sender_sdx"],
-                                                                       msg["sdx_set"])
+                if self.notification_timing:
+                    start_time = clock()
 
-            if ci_update:
-                cl_update, old_cl_entry, new_cl_entry = self.cib.update_loc(ingress_participant, msg["prefix"])
+                changes = list()
+                ingress_participant = self.config.asn_2_participant[msg["ingress_participant"]]
 
-                if cl_update:
-                    egress_participants = self.policy_handler.get_egress_participants(ingress_participant)
-                    best_participants = self.rib.get_best_path_participants(ingress_participant)
-                    egress_participants = egress_participants.union(best_participants)
-                    filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
-                    egress_participants = egress_participants.intersection(filter_participants)
+                ci_update, old_ci_entry, new_ci_entry = self.cib.update_in(msg["type"],
+                                                                           ingress_participant,
+                                                                           msg["prefix"],
+                                                                           msg["sender_sdx"],
+                                                                           msg["sdx_set"])
 
-                    for filter_participant in filter_participants:
-                        changes.append(self.update_forbidden_paths(msg["prefix"],
-                                                                   None,
-                                                                   set(msg["sdx_set"]),
-                                                                   ingress_participant,
-                                                                   filter_participant))
+                if ci_update:
+                    cl_update, old_cl_entry, new_cl_entry = self.cib.update_loc(ingress_participant, msg["prefix"])
 
-                    for egress_participant in egress_participants:
-                        ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
-                        active_policies = True if ingress_participants else False
-                        ingress_participants.update(self.rib.get_all_participants_using_best_path(msg["prefix"],
-                                                                                                  egress_participant))
-                        filter_participants = self.rib.get_all_receiver_participants(msg["prefix"],
-                                                                                     egress_participant)
-                        ingress_participants = ingress_participants.intersection(filter_participants)
+                    if cl_update:
+                        egress_participants = self.policy_handler.get_egress_participants(ingress_participant)
+                        best_participants = self.rib.get_best_path_participants(ingress_participant)
+                        egress_participants = egress_participants.union(best_participants)
                         filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
-                        ingress_participants = ingress_participants.difference(filter_participants)
+                        egress_participants = egress_participants.intersection(filter_participants)
 
-                        receiver_participant = self.get_first_sdx_participant_on_path(msg["prefix"], egress_participant)
+                        for filter_participant in filter_participants:
+                            changes.append(self.update_forbidden_paths(msg["prefix"],
+                                                                       None,
+                                                                       set(msg["sdx_set"]),
+                                                                       ingress_participant,
+                                                                       filter_participant))
 
-                        if receiver_participant:
-                            co_update, old_co_entry, new_co_entry = self.cib.update_out(egress_participant,
-                                                                                        msg["prefix"],
-                                                                                        receiver_participant,
-                                                                                        ingress_participants,
-                                                                                        self.config.id,
-                                                                                        active_policies)
+                        for egress_participant in egress_participants:
+                            ingress_participants = self.policy_handler.get_ingress_participants(egress_participant)
+                            active_policies = True if ingress_participants else False
+                            ingress_participants.update(self.rib.get_all_participants_using_best_path(msg["prefix"],
+                                                                                                      egress_participant))
+                            filter_participants = self.rib.get_all_receiver_participants(msg["prefix"],
+                                                                                         egress_participant)
+                            ingress_participants = ingress_participants.intersection(filter_participants)
+                            filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
+                            ingress_participants = ingress_participants.difference(filter_participants)
 
-                            random_value = randint(0, self.config.loop_detector.max_random_value)
-                            timestamp = time()
+                            receiver_participant = self.get_first_sdx_participant_on_path(msg["prefix"], egress_participant)
 
-                            self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+                            if receiver_participant:
+                                co_update, old_co_entry, new_co_entry = self.cib.update_out(egress_participant,
+                                                                                            msg["prefix"],
+                                                                                            receiver_participant,
+                                                                                            ingress_participants,
+                                                                                            self.config.id,
+                                                                                            active_policies)
 
-                    if changes:
-                        event = XCTRLEvent("LoopDetector", "FORBIDDEN PATHS CHANGE", changes)
-                        self.event_queue.put(event)
+                                random_value = randint(0, self.config.loop_detector.max_random_value)
+                                timestamp = time()
 
-            if self.notification_timing:
-                end_time = clock()
-                with open(self.notification_timing_file, "a") as outfile:
-                    outfile.write(str(end_time - start_time) + '\n')
+                                self.notify_nh_sdx(co_update, old_co_entry, new_co_entry, timestamp, random_value)
+
+                        if changes:
+                            event = XCTRLEvent("LoopDetector", "FORBIDDEN PATHS CHANGE", changes)
+                            self.event_queue.put(event)
+
+                if self.notification_timing:
+                    end_time = clock()
+                    with open(self.notification_timing_file, "a") as outfile:
+                        outfile.write(str(end_time - start_time) + '\n')
 
     def rib_update(self, updates):
         """

@@ -13,7 +13,7 @@ def main(argv):
 
     sender_sdxes = argv.sender_sdxes.split(",")
 
-    ingress_participant = int(argv.ingress_participant)
+    ingress_participant = int(argv.ingress_participant) + 100
 
     probability = float(argv.probability)
 
@@ -55,7 +55,7 @@ def main(argv):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sender_sdxes', help='comma separated list of senders sdxes')
-    parser.add_argument('ingress_participant', help='ingress participants')
+    parser.add_argument('ingress_participant', help='participant id - ingress participants')
     parser.add_argument('prefix_file', help='prefix')
     parser.add_argument('num_prefixes', help='number of prefixes to read from file')
     parser.add_argument('probability', help='probability that this prefix has an installed policy (0.75)')

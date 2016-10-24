@@ -20,7 +20,7 @@ def main(argv):
 
     # local SDX config
     tmp_sdx = {"Address": "localhost",
-               "VNHs": "172.1.1.1/24",
+               "VNHs": "172.1.1.1/8",
                "VMAC Computation": {
                    "VMAC Size": 48,
                    "Superset ID Size": 6,
@@ -97,6 +97,7 @@ def main(argv):
 
     with open(config_file, 'w') as outfile:
         json.dump(config, outfile)
+
 
 class IPAddressGenerator(object):
     def __init__(self, network):

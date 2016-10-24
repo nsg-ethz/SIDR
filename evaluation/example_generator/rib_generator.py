@@ -1,5 +1,6 @@
 import argparse
 import random
+from netaddr import IPNetwork, IPAddress
 
 
 def main(argv):
@@ -9,7 +10,9 @@ def main(argv):
     start_time = int(argv.start_time)
     curr_announcement = 0
 
-    remote_address = '172.1.0.1'
+    local_sdx_network = "172.0.0.0/16"
+    ip_generator = IPAddressGenerator(local_sdx_network)
+
     local_address = '172.1.255.254'
     local_asn = '65000'
 
@@ -49,16 +52,27 @@ def main(argv):
                 else:
                     as_path = ''
 
-                announcement = str(time) + '|' + str(msg_type) + '|' + str(remote_address) + '|' + str(from_participant) \
+                announcement = str(time) + '|' + str(msg_type) + '|' + str(ip_generator.get_address(from_participant)) + '|' + str(from_participant + 100) \
                                + '|' + str(local_address) + '|' + str(local_asn) + '|' + str(as_path) + '|' + str(prefix)
 
                 outfile.write(announcement + '\n')
 
 
+class IPAddressGenerator(object):
+    def __init__(self, network):
+        self.network = IPNetwork(network)
+        self.start = self.network.value
+        self.current = 0
+
+    def get_address(self):
+        self.current += 1
+        return str(IPAddress(self.start + self.current))
+
+
 ''' main '''
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('from_participants', help='asn format 1:100')
+    parser.add_argument('from_participants', help='participant id - format 1:100')
     parser.add_argument('num_announcements', help='number of announcements')
     parser.add_argument('prefix', help='prefix')
     parser.add_argument('as_paths', help='as paths separated by semi-colon, and ases within as path separated by comma: 100,200;300,400')

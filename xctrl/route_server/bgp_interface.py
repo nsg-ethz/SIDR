@@ -2,7 +2,7 @@
 #  Author:
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
-LOG = True
+LOG = False
 
 
 def get_all_participants_advertising(prefix, participants):
@@ -159,7 +159,8 @@ def get_as_set(config, participant_name, peers, prefix):
             peer_as_path = route['as_path']
 
     if num_routes == 1:
-        print str(peer_as_path)
+        if LOG:
+            print str(peer_as_path)
         path_set = peer_as_path.split('(')
         as_path = path_set[0].split()
         as_set = set(path_set[1].replace(')','').split()) if len(path_set) > 1 else set()
@@ -190,7 +191,8 @@ def get_blocking_policy_as_set(config, participant_name, prefix):
     peers = []
     peers.extend(config.participants[participant_name].fwd_peers)
 
-    print "PEERS: "+str(peers)
+    if LOG:
+        print "PEERS: "+str(peers)
 
     route = config.participants[participant_name].get_route('local', prefix)
     if route:
@@ -198,16 +200,19 @@ def get_blocking_policy_as_set(config, participant_name, prefix):
         if best_path_participant not in peers:
             peers.append(best_path_participant)
 
-    print "PEERS BEFORE: "+str(peers)
+    if LOG:
+        print "PEERS BEFORE: "+str(peers)
 
     for peer in config.participants[participant_name].fwd_peers:
         route = config.participants[peer].get_route('input', prefix)
         if route:
             ases = route["as_path"].replace('(','').replace(')','').split()
-            print "ASES: "+str(ases)
-            print str(config.participant_2_asn[participant_name])
+            if LOG:
+                print "ASES: "+str(ases)
+                print str(config.participant_2_asn[participant_name])
             if str(config.participant_2_asn[participant_name]) in ases:
-                print "REMOVE: "+str(peer)
+                if LOG:
+                    print "REMOVE: "+str(peer)
                 peers.remove(peer)
                 if route["prefix"] not in config.participants[participant_name].no_fwd_peers:
                     config.participants[participant_name].no_fwd_peers[route["prefix"]] = []
@@ -216,8 +221,9 @@ def get_blocking_policy_as_set(config, participant_name, prefix):
                 if route["prefix"] in config.participants[participant_name].no_fwd_peers:
                     if peer in config.participants[participant_name].no_fwd_peers[route["prefix"]]:
                         config.participants[participant_name].no_fwd_peers[route["prefix"]].remove(peer)
-                    
-    print "PEERS AFTER: "+str(peers)
+
+    if LOG:
+        print "PEERS AFTER: "+str(peers)
 
     as_path_attribute = get_as_set(config, participant_name, peers, prefix)
     return as_path_attribute
