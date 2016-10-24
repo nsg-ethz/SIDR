@@ -3,7 +3,7 @@ import random
 
 
 def main(argv):
-    announcements_file = argv.out_path + "announcements.log"
+    announcements_file = argv.out_path + "1.log"
 
     interval = int(argv.interval)
     start_time = int(argv.start_time)
