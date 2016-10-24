@@ -14,7 +14,7 @@ def main(argv):
     ip_generator = IPAddressGenerator(local_sdx_network)
     asn_generator = ASNGenerator()
 
-    num_participants = argv.num_participants
+    num_participants = int(argv.num_participants)
 
     config_file = argv.out_path + "global.cfg"
 
@@ -51,7 +51,7 @@ def main(argv):
         tmp_sdx["Participants"][str(i)] = {
             "Ports": [{
                 "Id": i,
-                "MAC": RandMAC(),
+                "MAC": str(RandMAC()),
                 "IP": ip_generator.get_address()
             }],
             "ASN": asn_generator.get_asn()

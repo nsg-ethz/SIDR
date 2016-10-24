@@ -5,17 +5,16 @@ import random
 def main(argv):
     announcements_file = argv.out_path + "announcements.log"
 
-    start_time =  argv.start_time
-    curr_announcement = 0
+    start_time = int(argv.start_time)
 
     remote_address = '172.1.0.1'
     local_address = '172.1.255.254'
     local_asn = '65000'
 
     prefix_file = argv.prefix_file
-    num_prefixes = argv.num_prefixes
+    num_prefixes = int(argv.num_prefixes)
 
-    from_participant = int(argv.from_participants)
+    from_participant = int(argv.from_participant)
 
     as_paths = argv.as_paths.split(';')
 
@@ -24,7 +23,7 @@ def main(argv):
 
             i = 0
 
-            for line in prefix_file:
+            for line in infile:
                 i += 1
 
                 if i > num_prefixes:
@@ -32,8 +31,7 @@ def main(argv):
 
                 prefix = line.strip()
 
-                time = start_time + curr_announcement
-                curr_announcement += 1
+                time = start_time
 
                 msg_type = 'announce'
 

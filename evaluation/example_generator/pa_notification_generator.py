@@ -2,22 +2,22 @@ import argparse
 import json
 import random
 import numpy as np
-
+import time
 
 def main(argv):
     notification_file = argv.out_path + "notifications.log"
 
     notifications = list()
 
-    start_time = argv.start_time
+    start_time = int(argv.start_time)
 
     sender_sdxes = argv.sender_sdxes.split(",")
 
     ingress_participant = int(argv.ingress_participant)
 
-    probability = argv.probability
+    probability = float(argv.probability)
 
-    num_prefixes = argv.num_prefixes
+    num_prefixes = int(argv.num_prefixes)
 
     with open(argv.prefix_file, "r") as infile:
         i = 0
@@ -28,15 +28,15 @@ def main(argv):
             if i > num_prefixes:
                 break
 
-            choice = np.random.choice([True, False], p=[probability, 1 - probability])
+            choice = np.random.choice([True, False], p=[probability, 1.0 - probability])
 
             if choice:
                 prefix = line.strip()
 
                 sender_sdx = random.choice(sender_sdxes)
-                time = start_time
+                s_time = start_time
                 tmp_notification = {
-                    "time": time,
+                    "time": s_time,
                     "type": "announce",
                     "prefix": prefix,
                     "sender_sdx": sender_sdx,

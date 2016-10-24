@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+import time
 
 
 def main(argv):
@@ -8,15 +9,14 @@ def main(argv):
 
     notifications = list()
 
-    interval = argv.interval
-    start_time =  argv.start_time
+    interval = int(argv.interval)
+    start_time = int(argv.start_time)
     curr_notification = 0
 
-    num_notifications = argv.num_notifications
+    num_notifications = int(argv.num_notifications)
     prefix = argv.prefix
 
     sender_sdxes = argv.sender_sdxes.split(",")
-
 
     if not ':' in argv.ingress_participants:
         ingress_participants = [int(argv.ingress_participants)]
@@ -26,13 +26,13 @@ def main(argv):
 
     for ingress_participant in ingress_participants:
         for i in range(0, num_notifications):
-            time = start_time + curr_notification * interval
+            s_time = start_time + curr_notification * interval
             curr_notification += 1
 
             sender_sdx = random.choice(sender_sdxes)
 
             tmp_notification = {
-                "time": time,
+                "time": s_time,
                 "type": "announce",
                 "prefix": prefix,
                 "sender_sdx": sender_sdx,
