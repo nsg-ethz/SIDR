@@ -13,10 +13,8 @@ class Peer():
         self.asn = asn
 
         self.down = True
-        
-        self.rib = {"input": rib(asn, "input"),
-                    "local": rib(asn, "local"),
-                    "output": rib(asn, "output")}
+
+        self.rib = rib(asn, ["input", "local", "output"])
          
     def update(self, route):
         
@@ -33,23 +31,23 @@ class Peer():
                 if LOG:
                     print "PEER DOWN - ASN "+str(self.asn)
 
-                routes = self.rib['input'].get_all()
+                routes = self.rib.get_all('input')
                         
                 for route_item in routes:
                     route_list.append({'withdraw': route_item})
 
-                self.rib["output"].delete_all()
-                self.rib["output"].commit()
+                self.rib.delete_all('output')
+                self.rib.commit()
 
-                self.rib["input"].delete_all()
-                self.rib["input"].commit()
+                self.rib.delete_all('input')
+                self.rib.commit()
 
             elif route['neighbor']['state']=='up':
                 # announce all existing prefixes from local rib
                 if LOG: 
                     print "PEER UP - ASN "+str(self.asn)
 
-                routes = self.rib['local'].get_all()
+                routes = self.rib.get_all('local')
 
                 for route_item in routes:
                     route_list.append({'re-announce': route_item})
@@ -88,14 +86,16 @@ class Peer():
                     if 'ipv4 unicast' in announce:
                         for next_hop in announce['ipv4 unicast'].keys():
                             for prefix in announce['ipv4 unicast'][next_hop].keys():
-                                self.rib["input"][prefix] = (next_hop,
-                                                             origin,
-                                                             as_path,
-                                                             communities,
-                                                             med,
-                                                             atomic_aggregate)
-                                self.rib["input"].commit()
-                                announce_route = self.rib["input"][prefix]
+                                self.rib.add("input",
+                                             prefix,
+                                             (next_hop,
+                                              origin,
+                                              as_path,
+                                              communities,
+                                              med,
+                                              atomic_aggregate))
+                                self.rib.commit()
+                                announce_route = self.rib.get("input", prefix)
                                         
                                 route_list.append({'announce': announce_route})
 
@@ -103,57 +103,57 @@ class Peer():
                     withdraw = route['neighbor']['message']['update']['withdraw']
                     if 'ipv4 unicast' in withdraw:
                         for prefix in withdraw['ipv4 unicast'].keys():
-                            deleted_route = self.rib["input"][prefix]
-                            self.rib["input"].delete(prefix)
-                            self.rib["input"].commit()
+                            deleted_route = self.rib.get("input", prefix)
+                            self.rib.delete("input", prefix)
+                            self.rib.commit()
                                     
                             route_list.append({'withdraw': deleted_route})
         return route_list
     
     def process_notification(self,route):
         if ('shutdown' == route['notification']):
-            self.rib["input"].delete_all()
-            self.rib["input"].commit()
-            self.rib["local"].delete_all()
-            self.rib["local"].commit()
-            self.rib["output"].delete_all()
-            self.rib["output"].commit()
+            self.rib.delete_all("input")
+            self.rib.commit()
+            self.rib.delete_all("local")
+            self.rib.commit()
+            self.rib.delete_all("output")
+            self.rib.commit()
 
             # TODO: send shutdown notification to participants 
     
     def add_route(self,rib_name,prefix,attributes):
-        self.rib[rib_name][prefix] = attributes
-        self.rib[rib_name].commit()
+        self.rib.add(rib_name, prefix, attributes)
+        self.rib.commit()
     
     def add_many_routes(self,rib_name,routes):
-        self.rib[rib_name].add_many(routes)
-        self.rib[rib_name].commit()
+        self.rib.add_many(rib_name, routes)
+        self.rib.commit()
                                     
     def get_route(self,rib_name,prefix):
         
-        return self.rib[rib_name][prefix]
+        return self.rib.get(rib_name, prefix)
     
     def get_routes(self,rib_name,prefix):
         
-        return self.rib[rib_name].get_all(prefix)
+        return self.rib.get_all(rib_name, prefix)
     
     def get_all_routes(self, rib_name):
         
-        return self.rib[rib_name].get_all()
+        return self.rib.get_all(rib_name)
     
     def delete_route(self,rib_name,prefix):
         
-        self.rib[rib_name].delete(prefix)
-        self.rib[rib_name].commit()
+        self.rib.delete(rib_name, prefix)
+        self.rib.commit()
         
     def delete_all_routes(self,rib_name):
         
-        self.rib[rib_name].delete_all()
-        self.rib[rib_name].commit()
+        self.rib.delete_all(rib_name)
+        self.rib.commit()
     
     def filter_route(self,rib_name,item,value):
         
-        return self.rib[rib_name].filter(item,value)
+        return self.rib.filter(rib_name, item,value)
 
 ''' main '''    
 if __name__ == '__main__':
