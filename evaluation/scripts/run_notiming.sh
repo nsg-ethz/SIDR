@@ -9,7 +9,7 @@ for i in 50 100 150 200 250 300 350 400 450 500; do
 
     cd ~/GitHub/supercharged_sdx/examples/"$example_name"/
 
-    python ~/GitHub/supercharged_sdx/xctrl/xctrl.py "$example_name" 1 -t -nn -nt &
+    python ~/GitHub/supercharged_sdx/xctrl/xctrl.py "$example_name" 1 -t -nn -nt -ns &
     pid1=$!
     python ~/GitHub/supercharged_sdx/policy_submitter/policy_sender.py "$example_name" 1 &
     pid2=$!

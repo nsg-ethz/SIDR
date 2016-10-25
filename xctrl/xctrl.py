@@ -27,6 +27,7 @@ class XCTRL(object):
                  config_file,
                  debug,
                  test,
+                 no_superset,
                  rib_timing,
                  policy_timing,
                  notification_timing,
@@ -36,6 +37,7 @@ class XCTRL(object):
         self.debug = debug
         self.test = test
         self.no_notifications = no_notifications
+        self.no_superset = no_superset
 
         self.rib_timing = rib_timing
         self.policy_timing = policy_timing
@@ -121,11 +123,14 @@ class XCTRL(object):
             if isinstance(event, XCTRLEvent):
                 if event.type == "RIB UPDATE":
 
-                    # update vnh assignment
-                    self.modules["vmac_encoder"].vnh_assignment(event.data)
+                    if self.no_superset:
+                        sdx_messages = {"type": "new"}
+                    else:
+                        # update vnh assignment
+                        self.modules["vmac_encoder"].vnh_assignment(event.data)
 
-                    # update supersets
-                    sdx_messages = self.modules["vmac_encoder"].update_supersets(event.data)
+                        # update supersets
+                        sdx_messages = self.modules["vmac_encoder"].update_supersets(event.data)
 
                     # update policies if supersets changed
                     if sdx_messages["type"] == "new":
@@ -174,6 +179,7 @@ def main(argv):
                            config_file,
                            argv.debug,
                            argv.test,
+                           argv.nosuperset,
                            argv.ribtiming,
                            argv.policytiming,
                            argv.notificationtiming,
@@ -194,6 +200,7 @@ if __name__ == '__main__':
     parser.add_argument('sdxid', help='SDX identifier')
     parser.add_argument('-d', '--debug', help='enable debug output', action='store_true')
     parser.add_argument('-t', '--test', help='test mode', action='store_true')
+    parser.add_argument('-ns', '--nosuperset', help='deactivate superset computation', action='store_true')
     parser.add_argument('-nn', '--nonotifications', help='no notifications', action='store_true')
     parser.add_argument('-rt', '--ribtiming', help='rib update timing', action='store_true')
     parser.add_argument('-pt', '--policytiming', help='policy activation timing', action='store_true')
