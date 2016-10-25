@@ -123,14 +123,11 @@ class XCTRL(object):
             if isinstance(event, XCTRLEvent):
                 if event.type == "RIB UPDATE":
 
-                    if self.no_superset:
-                        sdx_messages = {"type": "new"}
-                    else:
-                        # update vnh assignment
-                        self.modules["vmac_encoder"].vnh_assignment(event.data)
+                    # update vnh assignment
+                    self.modules["vmac_encoder"].vnh_assignment(event.data)
 
-                        # update supersets
-                        sdx_messages = self.modules["vmac_encoder"].update_supersets(event.data)
+                    # update supersets
+                    sdx_messages = self.modules["vmac_encoder"].update_supersets(event.data)
 
                     # update policies if supersets changed
                     if sdx_messages["type"] == "new":

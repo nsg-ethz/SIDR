@@ -22,11 +22,11 @@ def main(argv):
     tmp_sdx = {"Address": "localhost",
                "VNHs": "172.1.1.1/8",
                "VMAC Computation": {
-                   "VMAC Size": 48,
-                   "Superset ID Size": 6,
-                   "Max Superset Size": 30,
-                   "Best Path Size": 12,
-                   "Superset Threshold": 10
+                   "VMAC Size": 10000,
+                   "Superset ID Size": 50,
+                   "Max Superset Size": 9000,
+                   "Best Path Size": 950,
+                   "Superset Threshold": 100
                },
                "Loop Detector": {
                    "Port": 2201,
