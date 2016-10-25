@@ -8,7 +8,7 @@ import argparse
 
 from multiprocessing.connection import Client
 
-LOG = True
+LOG = False
 
 
 def parse_policy_log(fname):
@@ -35,7 +35,8 @@ def send_policy(time_2_policy, address, port):
                     print "Sending policy items at time ", ind
                 policy_socket = Client((address, port))
                 data = time_2_policy[ind]
-                print str(data)
+                if LOG:
+                    print str(data)
                 policy_socket.send(json.dumps(data))
                 recv = policy_socket.recv()
                 if LOG:
