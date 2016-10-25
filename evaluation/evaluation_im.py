@@ -48,10 +48,6 @@ class Evaluator(object):
         self.iterations = iterations
         self.start = start
         self.output = output + "evaluation_" + str(mode) + ".log"
-        self.communication = output + "communication_" + str(mode) + ".log"
-        self.loop_length = output + "loop_length_" + str(mode) + ".log"
-        self.max_hops = output + "max_hops_" + str(mode) + ".log"
-        self.loop_file = output + "loops_" + str(mode) + ".log"
 
         with open(self.output, 'w', 102400) as output:
             output.write("Total Submitted Policies | "
@@ -71,9 +67,6 @@ class Evaluator(object):
             total_policies = 0
             installed_policies = 0
 
-            # cycle stats
-            num_cycles = 0
-
             with open(self.policy_path + "policies_" + str(j) + ".log", 'r') as policies:
                 i = 0
                 for policy in policies:
@@ -92,30 +85,18 @@ class Evaluator(object):
                                                                               match)
                     else:
                         if self.mode == 1:
-                            tmp_total, tmp_installed, tmp_communication, tmp_num_cycles, tmp_cycle_length, tmp_hops = \
+                            tmp_total, tmp_installed = \
                                 self.install_policy_our_scheme(sdx_id,
                                                                from_participant,
                                                                to_participant,
                                                                match)
                         else:
-                            tmp_total, tmp_installed, tmp_communication, tmp_num_cycles, tmp_cycle_length, tmp_hops = \
+                            tmp_total, tmp_installed = \
                                 self.install_policy_full_knowledge(sdx_id,
                                                                    from_participant,
                                                                    to_participant,
                                                                    match)
 
-                        # cycle
-                        num_cycles += tmp_num_cycles
-
-                        # store results
-                        with open(self.communication, 'a', 102400) as output:
-                            output.write(",".join([str(x) for x in tmp_communication]) + "\n")
-
-                        with open(self.loop_length, 'a', 102400) as output:
-                            output.write(",".join([str(x) for x in tmp_cycle_length]) + "\n")
-
-                        with open(self.max_hops, 'a', 102400) as output:
-                            output.write(str(tmp_hops) + "\n")
 
                     total_policies += tmp_total
                     installed_policies += tmp_installed
@@ -182,12 +163,7 @@ class Evaluator(object):
         total_num_policies = len(paths) - 1 + paths['other']
         num_safe_policies = paths['other']
 
-        num_cycles = 0
-        num_messages = list()
-        max_hops = 0
-
         simple_loops = 0
-        cycles = list()
 
         for destination, sdx_info in paths.iteritems():
             messages = set()
@@ -210,33 +186,22 @@ class Evaluator(object):
             # add all next hop sdxes to the queue
             dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, None, 1, sdx_path))
 
-            # count the message
-            messages.add((sdx_id, next_sdx, in_participant))
-
             # start the traversal of the sdx graph for each next hop sdx
-            safe, tree_depth = self.traversal_our_scheme(sdx_id, dfs_queue, messages)
+            safe, tree_depth = self.traversal_our_scheme(sdx_id, dfs_queue)
 
             if safe:
                 num_safe_policies += 1
-                if tree_depth > max_hops:
-                    max_hops = tree_depth
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
-            else:
-                num_cycles += 1
-
-                cycles.append(tree_depth)
-
-            num_messages.append(len(messages))
 
         # subtract all policies which go directly to same IXP again. We just treat all of those paths as if
         # they didn't exist.
         total_num_policies -= simple_loops
 
-        return total_num_policies, num_safe_policies, num_messages, num_cycles, cycles, max_hops
+        return total_num_policies, num_safe_policies
 
-    def traversal_our_scheme(self, sdx_id, dfs_queue, messages):
+    def traversal_our_scheme(self, sdx_id, dfs_queue):
         max_hop = 0
 
         # start traversal of SDX graph
@@ -276,9 +241,6 @@ class Evaluator(object):
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
                         check.append((in_participant, next_sdx))
 
-                        # count the message
-                        messages.add((n.sdx_id, next_sdx, in_participant))
-
             # check all policy activated paths
             for participant in out_participants:
                 # only check it, if it is not the best path
@@ -301,8 +263,6 @@ class Evaluator(object):
                             check.append((in_participant, next_sdx))
                             dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, None, hop, sdx_path))
 
-                            # count the message
-                            messages.add((n.sdx_id, next_sdx, in_participant))
         return True, max_hop
 
     def install_policy_full_knowledge(self, sdx_id, from_participant, to_participant, match):
@@ -320,11 +280,7 @@ class Evaluator(object):
         total_num_policies = len(paths) - 1 + paths['other']
         num_safe_policies = paths['other']
 
-        num_messages = list()
-        num_cycles = 0
-        cycles = list()
         simple_loops = 0
-        max_hops = 0
 
         for destination, sdx_info in paths.iteritems():
             messages = set()
@@ -349,33 +305,22 @@ class Evaluator(object):
 
             # add all next hop sdxes to the queue
             dfs_queue.append(self.dfs_node(next_sdx, in_participant, destination, match, 1, sdx_path))
-            # count the message
-            messages.add((sdx_id, next_sdx, in_participant, match))
 
             # start the traversal of the sdx graph for each next hop sdx
-            safe, tree_depth = self.traversal_full_knowledge(sdx_id, from_participant, dfs_queue, messages)
+            safe, tree_depth = self.traversal_full_knowledge(sdx_id, from_participant, dfs_queue)
 
             if safe:
                 num_safe_policies += 1
 
-                if tree_depth > max_hops:
-                    max_hops = tree_depth
-
                 if to_participant not in self.sdx_structure[sdx_id][from_participant]["policies"][destination]:
                     self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant] = list()
                 self.sdx_structure[sdx_id][from_participant]["policies"][destination][to_participant].append(match)
-            else:
-                num_cycles += 1
-
-                cycles.append(tree_depth)
-
-            num_messages.append(len(messages))
 
         total_num_policies -= simple_loops
 
-        return total_num_policies, num_safe_policies, num_messages, num_cycles, cycles, max_hops
+        return total_num_policies, num_safe_policies
 
-    def traversal_full_knowledge(self, sdx_id, from_participant, dfs_queue, messages):
+    def traversal_full_knowledge(self, sdx_id, from_participant, dfs_queue):
         max_hop = 0
 
         # start traversal
@@ -409,12 +354,9 @@ class Evaluator(object):
 
                         # check if the intial sdx is on the path, if so, a loop is created
                         if sdx_id == next_sdx and from_participant == in_participant:
-                            with open(self.loop_file, 'a', 102400) as output:
-                                output.write("FROM:" + str(from_participant) + "@" + str(sdx_id) + "|" + str(n.destination) + "|" + "|".join([",".join([str(y) for y in x]) for x in sdx_path]) + "|" + str(in_participant) + "," + str(next_sdx) + "\n")
                             return False, hop
 
                         dfs_queue.append(self.dfs_node(next_sdx, in_participant, n.destination, n.match, hop, sdx_path))
-                        messages.add((n.sdx_id, next_sdx, in_participant, n.match))
 
                         if out_participant in out_participants:
                             out_participants.remove(out_participant)
@@ -439,8 +381,6 @@ class Evaluator(object):
 
                                 # check if the intial sdx is on the path, if so, a loop is created
                                 if sdx_id == next_sdx and from_participant == in_participant:
-                                    with open(self.loop_file, 'a', 102400) as output:
-                                        output.write("FROM:" + str(from_participant) + "@" + str(sdx_id) + "|" + str(n.destination) + "|" + "|".join([",".join([str(y) for y in x]) for x in sdx_path]) + "|" + str(in_participant) + "," + str(next_sdx) + "\n")
                                     return False, hop
 
                                 dfs_queue.append(self.dfs_node(next_sdx,
@@ -449,7 +389,6 @@ class Evaluator(object):
                                                                new_match,
                                                                hop,
                                                                sdx_path))
-                                messages.add((n.sdx_id, next_sdx, in_participant, n.match))
 
         return True, max_hop
 
