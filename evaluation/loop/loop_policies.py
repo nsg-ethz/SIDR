@@ -5,10 +5,14 @@
 import json
 import argparse
 import random
+import sys
+import os
 
 from collections import defaultdict
 
-from header_bitstring import HeaderBitstring
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+
+from header_bitstring import HeaderBitString
 
 
 class PolicyGenerator(object):
@@ -51,14 +55,14 @@ class PolicyGenerator(object):
             for i in range(0, loop_size):
                 match = self.get_match(mode)
 
-                tmp_hb = HeaderBitstring(match=match)
+                tmp_hb = HeaderBitString(match=match)
 
                 if header_bitstring:
-                    header_bitstring = HeaderBitstring.combine(header_bitstring, tmp_hb)
+                    header_bitstring = HeaderBitString.combine(header_bitstring, tmp_hb)
                 else:
                     header_bitstring = tmp_hb
 
-                if header_bitstring.contains_impossible_bit():
+                if not header_bitstring:
                     num_no_loop += 1
                     break
 
@@ -178,7 +182,7 @@ class PolicyGenerator(object):
 
 
 def main(argv):
-    PolicyGenerator(argv.ports, int(argv.interations), int(argv.max_loop_size), argv.output)
+    PolicyGenerator(argv.ports, int(argv.iterations), int(argv.max_loop_size), argv.output)
 
 
 ''' main '''
