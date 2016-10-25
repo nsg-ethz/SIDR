@@ -15,30 +15,37 @@ import numpy as np
 def main(argv):
     infile = argv.infile
 
-    total = list()
-    no_loops = list()
+    safe1 = list()
+    safe2 = list()
+    safe_total = list()
+    loops = list()
 
     with open(infile) as input:
         for line in input:
-            case, tmp1, tmp2 = [float(x) for x in line.strip().split('|')]
-            if case == 0:
-                continue
-            total.append((100.0*(tmp1-tmp2))/tmp1)
-            no_loops.append((100.0*tmp2)/tmp1)
+            case, tmp_total, tmp_safe1, tmp_loop, tmp_safe2 = [float(x) for x in line.strip().split('|')]
+
+            #if case == 0:
+            #    continue
+
+            safe1.append((100.0*tmp_safe1)/tmp_total)
+            safe2.append((100.0*tmp_safe2)/tmp_total)
+            safe_total.append((100.0*(tmp_safe2+tmp_safe1))/tmp_total)
+            loops.append((100.0*tmp_loop)/tmp_total)
 
     # plot it
-    N = 2
+    N = 3
     ind = np.arange(N)  # the x locations for the groups
-    width = 0.25  # the width of the bars: can also be len(x) sequence
+    width = 0.5  # the width of the bars: can also be len(x) sequence
 
-    p1 = plt.bar(1 + ind, no_loops, width, color='g')
-    p2 = plt.bar(1 + ind, total, width, color='r',
-                 bottom=no_loops)
+    p1 = plt.bar(0.5 + ind, safe1, width, color='g')
+    p2 = plt.bar(0.5 + ind, safe2, width, color='r', bottom=safe1)
+    p3 = plt.bar(0.5 + ind, loops, width, color='b', bottom=safe_total)
 
-    plt.ylabel('Loops [%]')
-    plt.xticks(1 + ind + width / 2., ('Same', 'Ports', 'Random'))
-    plt.yticks(np.arange(0, 110, 10))
-    plt.legend((p1[0], p2[0]), ('Safe Loops', 'Total Number of Loops'), loc=4)
+    plt.ylabel('Fraction of Policies')
+    plt.xticks(0.5 + ind + width / 2., ('Same', 'Traffic', 'Random'))
+    plt.yticks(np.arange(0, 125, 25))
+    plt.xlim(0, 3.5)
+    plt.legend((p1[0], p2[0], p3[0]), ('Safe Policies', 'False Positives', 'Loop Policies'), loc=4)
 
     plt.savefig('loops.pdf', bbox_inches='tight')
 

@@ -39,16 +39,19 @@ class PolicyGenerator(object):
         modes = [0,1,2]
 
         for mode in modes:
-            total, no_loops = self.generate_policies(mode)
+            total, safe, loops, no_loops = self.generate_policies(mode)
 
             with open(output, "a") as outfile:
-                outfile.write(str(mode) + '|' + str(total) + '|' + str(no_loops) + '\n')
+                outfile.write(str(mode) + '|' + str(total) + '|' + str(safe) + '|' + str(loops) + '|' + str(no_loops) + '\n')
 
     def generate_policies(self, mode):
+        num_loop = self.iterations
         num_no_loop = 0
+        total = 0
 
         for j in range(0, self.iterations):
             loop_size = random.choice(range(2, self.max_loop_size + 1))
+            total += loop_size
 
             header_bitstring = None
 
@@ -66,7 +69,7 @@ class PolicyGenerator(object):
                     num_no_loop += 1
                     break
 
-        return self.iterations, num_no_loop
+        return total, total-num_loop, num_loop-num_no_loop, num_no_loop
 
     def get_match(self, mode):
         # all policies have exactly the same match
