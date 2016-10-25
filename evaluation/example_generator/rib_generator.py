@@ -35,7 +35,11 @@ def main(argv):
             prev_announce = False
 
             for i in range(0, num_announcements):
-                time = start_time + curr_announcement * interval
+
+                if i == 0 and start_time > 10:
+                    time = 2
+                else:
+                    time = start_time + curr_announcement * interval
                 curr_announcement += 1
 
                 if prev_announce:
@@ -46,8 +50,10 @@ def main(argv):
                 else:
                     msg_type = 'announce'
                     prev_announce = True
-
-                if msg_type == 'announce':
+                
+                if i == 0:
+                    as_path = '7000,7100'
+                elif msg_type == 'announce':
                     as_path = random.choice(as_paths)
                 else:
                     as_path = ''

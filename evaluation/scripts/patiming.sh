@@ -4,7 +4,7 @@
 
 cd ~/GitHub/supercharged_sdx/
 
-for i in 1 50 100 150 200 250 300 350 400 450 500; do
+for i in 1 5 10 15 20 25 30 35 40 45 50; do
 	
 	echo num_prefixes
 
