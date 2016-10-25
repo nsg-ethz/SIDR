@@ -71,7 +71,7 @@ class SuperSetEncoder(XCTRLModule):
 
                     # if preconfigured threshold is exceeded, then start completely from scratch
                     if len(self.supersets) > self.config.vmac_encoder.superset_threshold:
-                        SuperSetEncoder.recompute_all_supersets()
+                        self.recompute_all_supersets()
 
                         sdx_msgs = {"type": "new",
                                     "changes": []}
