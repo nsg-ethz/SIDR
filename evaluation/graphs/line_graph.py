@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib import rc_file
+rc_file('~/GitHub/supercharged_sdx/evaluation/graphs/matplotlibrc')
 import numpy as np
 from collections import defaultdict
 
@@ -20,7 +22,7 @@ def main(argv):
     examples = [argv.example + '_' + x for x in experiments]
 
     x_values = [int(x) for x in experiments]
-    x_labels = argv.x_labels.split(',')
+    x_labels = argv.xlabels.split(',')
 
     x_label = argv.xlabel
 
@@ -32,7 +34,7 @@ def main(argv):
         '95th': list()
     }
     for example in examples:
-        input_file = in_path + example + '/timing.log'
+        input_file = in_path + example + '.log'
 
         tmp_times = list()
 
@@ -47,11 +49,14 @@ def main(argv):
         y_values['95th'].append(np.percentile(tmp_array, 95))
 
     # plot it
-    plt.plot(x_values, y_values['5th'], x_values, y_values['median'], x_values, y_values['95th'])
+    p1 = plt.plot(x_values, y_values['5th'], '-o')
+    p2 = plt.plot(x_values, y_values['median'], '-s')
+    p3 = plt.plot(x_values, y_values['95th'], '-v')
 
     # add some text for labels, title and axes ticks
     plt.ylabel('Time [s]')
     plt.xlabel('Number of ' + x_label)
+    plt.legend((p1[0], p2[0], p3[0]), ('5th Percentile', 'Median', '95th Percentile'), loc='upper right', ncol=1)
 
     plt.savefig(example + '.pdf', bbox_inches='tight')
 
