@@ -39,8 +39,7 @@ def send_policy(time_2_policy, address, port):
                     print str(data)
                 policy_socket.send(json.dumps(data))
                 recv = policy_socket.recv()
-                if LOG:
-                    print "response received: ", recv
+                print "response received: ", recv
                 policy_socket.close()
             time.sleep(1)
 
