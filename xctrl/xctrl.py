@@ -71,7 +71,7 @@ class XCTRL(object):
         self.modules["loop_detection"] = LoopDetector(self.config,
                                                       self.event_queue,
                                                       self.debug,
-                                                      self.modules["route_server"].rib_interface,
+                                                      self.modules["route_server"].rib,
                                                       None,
                                                       self.test,
                                                       self.no_notifications,
@@ -82,7 +82,7 @@ class XCTRL(object):
         self.modules["vmac_encoder"] = SuperSetEncoder(self.config,
                                                        self.event_queue,
                                                        self.debug,
-                                                       self.modules["route_server"].rib_interface,
+                                                       self.modules["route_server"].rib,
                                                        self.modules["loop_detection"].forbidden_paths,
                                                        self.test)
 

@@ -92,7 +92,7 @@ class SuperSetEncoder(XCTRLModule):
 
     def recompute_all_supersets(self):
         # get all sets of participants advertising the same prefix
-        peer_sets = self.rib.get_all_participant_sets(self.config.vmac_encoder.prefix_2_vnh)
+        peer_sets = self.rib.get_all_participant_sets(self.config.vmac_encoder.prefix_2_vnh.keys())
 
         # remove all subsets
         peer_sets.sort(key=len, reverse=True)
@@ -162,7 +162,7 @@ class SuperSetEncoder(XCTRLModule):
             # get corresponding prefix
             prefix = self.config.vmac_encoder.vnh_2_prefix[vnh]
             # get set of participants advertising prefix
-            basic_set = self.rib.get_all_participants_advertising(prefix, self.config.participants)
+            basic_set = self.rib.get_all_participants_advertising(prefix)
 
 
 
@@ -199,7 +199,7 @@ class SuperSetEncoder(XCTRLModule):
             vmac_bitstring += set_bitstring
 
             # add identifier of best path
-            route = self.rib.get_route_from_rib(participant, 'local', prefix)
+            route = self.rib.get_routes('local', participant, prefix, None, False)
             if route:
                 best_participant = self.config.portip_2_participant[route['next_hop']]
 

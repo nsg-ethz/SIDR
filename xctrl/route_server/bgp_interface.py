@@ -54,12 +54,12 @@ def bgp_update_peers(updates, config, route_server):
                 # only announce route if at least one of the peers advertises it to that participant
                 if route:     
                     # check if we have already announced that route
-                    prev_route = route_server.rib[participant_name].get_route("output", prefix)
+                    prev_route = route_server.rib.get_routes("output", participant_name, prefix, None, False)
                     
                     if not bgp_routes_are_equal(route, prev_route):
                         # store announcement in output rib
-                        route_server.rib[participant_name].delete_route("output", prefix)
-                        route_server.rib[participant_name].add_route("output", prefix, route)
+                        route_server.rib.delete_route("output", participant_name, prefix)
+                        route_server.rib.add_route("output", participant_name, prefix, route)
 
                         # we only care for changes in existing routes, as only in this case a gratuituous ARP has to
                         # be sent
@@ -81,7 +81,7 @@ def bgp_update_peers(updates, config, route_server):
             # send custom route advertisements based on peerings
             for participant_name in config.participants:
                 # only modify route advertisement if this route has been advertised to the participant
-                prev_route = route_server.rib[participant_name].get_route("output", prefix)
+                prev_route = route_server.rib.get_routes("output", participant_name, prefix, None, False)
                 if prev_route: 
                     route = bgp_make_route_advertisement(route_server, participant_name, prefix)
                     # withdraw if no one advertises that route, else update reachability
@@ -89,8 +89,8 @@ def bgp_update_peers(updates, config, route_server):
                         # check if we have already announced that route
                         if not bgp_routes_are_equal(route, prev_route):
                             # store announcement in output rib
-                            route_server.rib[participant_name].delete_route("output",prefix)
-                            route_server.rib[participant_name].add_route("output",prefix,route)
+                            route_server.rib.delete_route("output", participant_name, prefix)
+                            route_server.rib.add_route("output", participant_name, prefix, route)
                             
                             changes.append({"participant": participant_name,
                                             "prefix": prefix})
@@ -102,7 +102,7 @@ def bgp_update_peers(updates, config, route_server):
                                     print announcement
                                 route_server.server.sender_queue.put(announcement)
                     else:
-                        route_server.rib[participant_name].delete_route("output", prefix)
+                        route_server.rib.delete_route("output", participant_name, prefix)
                         for neighbor in config.participant_2_portip[participant_name]:
                             next_hop = config.vmac_encoder.prefix_2_vnh[prefix]
                             announcement = withdraw_route(neighbor, prefix, next_hop)
@@ -125,24 +125,20 @@ def bgp_routes_are_equal(route1, route2):
 
 
 def bgp_make_route_advertisement(route_server, participant_name, prefix):
-    as_path_attribute = get_best_path(route_server, participant_name, prefix)
+    route = route_server.rib.get_route('local', participant_name, prefix, None, False)
 
     next_hop = route_server.config.vmac_encoder.prefix_2_vnh[prefix]
 
-    if as_path_attribute:
+    if route:
         route = {"next_hop": str(next_hop),
                  "origin": "",
-                 "as_path": as_path_attribute,
+                 "as_path": route['as_path'],
                  "communities": "",
                  "med": "",
                  "atomic_aggregate": ""}
         return route
     return None
 
-
-def get_best_path(route_server, participant_name, prefix):
-    route = route_server.rib[participant_name].get_route('local', prefix)
-    return route['as_path'] if route else ""
 
 
 def get_as_set(config, participant_name, peers, prefix):

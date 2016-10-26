@@ -5,14 +5,15 @@
 import json
 import Queue
 
+import time
+
 from server import Server
 from test_server import TestServer
 
 from decision_process import decision_process
 from bgp_interface import bgp_update_peers
 from lib import XCTRLModule, XCTRLEvent
-from peer import Peer
-from rib_interface import RIBInterface
+from rib import RIB
 
 
 class RouteServer(XCTRLModule):
@@ -23,22 +24,20 @@ class RouteServer(XCTRLModule):
         self.config = config
         self.event_queue = event_queue
 
-        # build rib for each participant
-        self.rib = dict()
-        for participant, attributes in self.config.participants.iteritems():
-            self.rib[participant] = Peer(attributes.asn)
+        # create RIB
+        self.rib = RIB(self.config)
 
         if test:
             self.server = TestServer(self.config.base_path, self.config.id)
         else:
             self.server = Server(self.config.route_server.port, self.config.route_server.key)
         self.run = False
-
-        self.rib_interface = RIBInterface(self.config, self.rib)
         
     def start(self):
         self.logger.debug("Start ExaBGP Interface")
         self.server.start()
+
+        start_time = time.clock()
 
         self.run = True
         while self.run:
@@ -46,30 +45,35 @@ class RouteServer(XCTRLModule):
             try:
                 route = self.server.receiver_queue.get(True, 1)
 
-                self.logger.debug("Received Route")
-                
-                route = json.loads(route)
+                if route == "DONE":
+                    print str(time.clock()-start_time) + ' finished with initial RIB construction'
 
-                # process route advertisements - add/remove routes to/from rib of respective participant (neighbor)
-                updates = None
-                
-                if 'neighbor' in route:
-                    if 'ip' in route['neighbor']:
-                        updates = self.rib[self.config.portip_2_participant[route['neighbor']['ip']]].update(route)
-                elif 'notification' in route:
-                    for participant in self.config.participants:
-                        self.rib[participant].process_notification(route)
-                
-                if updates is not None:
-                    # update local ribs - select best route for each prefix
-                    for update in updates:
-                        decision_process(self.rib, update)
+                else:
+                    self.logger.debug("Received Route")
 
-                    event = XCTRLEvent("RouteServer", "RIB UPDATE", updates)
-                    self.event_queue.put(event)
+                    route = json.loads(route)
+
+                    # process route advertisements - add/remove routes to/from rib of respective participant (neighbor)
+                    updates = None
+
+                    if 'neighbor' in route:
+                        if 'ip' in route['neighbor']:
+                            updates = self.rib.update(self.config.portip_2_participant[route['neighbor']['ip']], route)
+                    elif 'notification' in route:
+                        for participant in self.config.participants:
+                            self.rib.process_notification(participant, route)
+
+                    if updates is not None:
+                        # update local ribs - select best route for each prefix
+                        for update in updates:
+                            participants = self.config.participants.keys()
+                            decision_process(self.rib, participants, update)
+
+                        event = XCTRLEvent("RouteServer", "RIB UPDATE", updates)
+                        self.event_queue.put(event)
 
             except Queue.Empty:
-                #self.logger.debug("Empty Queue")
+                # self.logger.debug("Empty Queue")
                 pass
 
     def update_neighbors(self, updates):

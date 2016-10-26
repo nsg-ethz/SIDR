@@ -1,167 +1,257 @@
 #!/usr/bin/env python
 #  Author:
 #  Muhammad Shahbaz (muhammad.shahbaz@gatech.edu)
+#  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
-import os
-import sqlite3
-from threading import RLock as lock
+from rib_backend import SQL_RIB
+
+LOG = False
 
 
-class rib():
-    
-    def __init__(self, asn, names):
-        self.lock = lock()
-        with self.lock:
-            # Create a database in RAM
-            base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),"ribs"))
-            self.db = sqlite3.connect(base_path+'/'+str(asn)+'.db',check_same_thread=False)
-            self.db.row_factory = rib.dict_factory
-            self.names = names
-        
-            # Get a cursor object
-            for name in self.names:
-                cursor = self.db.cursor()
-                cursor.execute('''
-                            create table if not exists '''+name+''' (prefix text, next_hop text,
-                                   origin text, as_path text, communities text, med integer, atomic_aggregate boolean, primary key (prefix))
-                ''')
+class RIB(object):
+    def __init__(self, config):
+        self.down = True
+        self.config = config
+        sdx_id = self.config.id
+        self.rib = SQL_RIB(sdx_id, ["input", "local", "output"])
 
-            self.db.commit()
-    
-    def __del__(self):
-            
-        with self.lock:
-            self.db.close()
-        
-    def add(self,name,key,item):
-        
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            if isinstance(item,tuple) or isinstance(item,list):
-                cursor.execute('''insert or replace into ''' + name + ''' (prefix, next_hop, origin, as_path, communities, med,
-                        atomic_aggregate) values(?,?,?,?,?,?,?)''', 
-                        (key,item[0],item[1],item[2],item[3],item[4],item[5]))
-            elif isinstance(item,dict) or isinstance(item,sqlite3.Row):
-                cursor.execute('''insert or replace into ''' + name + ''' (prefix, next_hop, origin, as_path, communities, med,
-                        atomic_aggregate) values(?,?,?,?,?,?,?)''', 
-                        (key,item['next_hop'],item['origin'],item['as_path'],item['communities'],item['med'],item['atomic_aggregate']))
-            
-        #TODO: Add support for selective update
-            
-    def add_many(self,name,items):
-        
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            if (isinstance(items,list)):
-                cursor.execute('''insert or replace into ''' + name + ''' (prefix, next_hop, origin, as_path, communities, med,
-                        atomic_aggregate) values(?,?,?,?,?,?,?)''', items)
-            
-    def get(self,name,key):
-        with self.lock:
-            cursor = self.db.cursor()
-            cursor.execute('''select * from ''' + name + ''' where prefix = ?''', (key,))
-        
-            return cursor.fetchone()
-    
-    def get_all(self,name,key=None):
-        
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            if (key is not None):
-                cursor.execute('''select * from ''' + name + ''' where prefix = ?''', (key,))
-            else:
-                cursor.execute('''select * from ''' + name)
-        
-            return cursor.fetchall()
-    
-    def filter(self,name,item,value):
-            
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            script = "select * from " + name + " where " + item + " = '" + value + "'"
-        
-            cursor.execute(script)
-        
-            return cursor.fetchall()
-    
-    def update(self,name,key,item,value):
-        
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            script = "update " + name + " set " + item + " = '" + value + "' where prefix = '" + key + "'"
-        
-            cursor.execute(script)
-            
-    def update_many(self,name,key,item):
-        
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            if (isinstance(item,tuple) or isinstance(item,list)):
-                cursor.execute('''update ''' + name + ''' set next_hop = ?, origin = ?, as_path = ?,
-                            communities = ?, med = ?, atomic_aggregate = ? where prefix = ?''',
-                            (item[0],item[1],item[2],item[3],item[4],item[5],key))
-            elif (isinstance(item,dict) or isinstance(item,sqlite3.Row)):
-                cursor.execute('''update ''' + name + ''' set next_hop = ?, origin = ?, as_path = ?,
-                            communities = ?, med = ?, atomic_aggregate = ? where prefix = ?''', 
-                            (item['next_hop'],item['origin'],item['as_path'],item['communities'],item['med'],
-                             item['atomic_aggregate'],key))
-        
-    def delete(self,name,key):
-        
-        with self.lock:
-            # TODO: Add more granularity in the delete process i.e., instead of just prefix, 
-            # it should be based on a conjunction of other attributes too.
-        
-            cursor = self.db.cursor()
-        
-            cursor.execute('''delete from ''' + name + ''' where prefix = ?''', (key,))
-        
-    def delete_all(self,name):
-        
-        with self.lock:
-            cursor = self.db.cursor()
-        
-            cursor.execute('''delete from ''' + name)
-    
-    def commit(self):
-        
-        with self.lock:
-            self.db.commit()
-        
-    def rollback(self):
-        
-        with self.lock:
-            self.db.rollback()
+    def update(self, participant, route):
+        origin = None
+        as_path = None
+        med = None
+        atomic_aggregate = None
+        communities = ''
 
-    @staticmethod
-    def dict_factory(cursor, row):
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
-        return d
+        route_list = []
 
-''' main '''     
-if __name__ == '__main__':
-    
-    #TODO Update test
-    
-    myrib = rib()
-    
-    myrib['100.0.0.1/16'] = ('172.0.0.2', 'igp', '100, 200, 300', '0', 'false')
-    #myrib['100.0.0.1/16'] = ['172.0.0.2', 'igp', '100, 200, 300', '0', 'false']
-    #myrib['100.0.0.1/16'] = {'next_hop':'172.0.0.2', 'origin':'igp', 'as_path':'100, 200, 300',
-    #                          'med':'0', 'atomic_aggregate':'false'}
-    myrib.commit()
-    
-    myrib.update('100.0.0.1/16', 'next_hop', '190.0.0.2')
-    myrib.commit()
-    
-    val = myrib.filter('as_path', '300')
-    
-    print val[0]['next_hop']
+        if 'state' in route['neighbor']:
+            if route['neighbor']['state'] == 'down':
+                if LOG:
+                    print "PEER DOWN - PARTICIPANT " + str(participant)
+
+                routes = self.get_routes('input', participant, None, None, all)
+
+                for route_item in routes:
+                    route_list.append({'withdraw': route_item})
+
+                self.delete_all_routes(participant, 'output')
+
+                self.delete_all_routes(participant, 'input')
+
+            elif route['neighbor']['state'] == 'up':
+                # announce all existing prefixes from local rib
+                if LOG:
+                    print "PEER UP - PARTICIPANT " + str(participant)
+
+                routes = self.get_routes('local', participant, None, None, all)
+
+                for route_item in routes:
+                    route_list.append({'re-announce': route_item})
+
+        if 'message' in route['neighbor']:
+            if 'update' in route['neighbor']['message']:
+                if 'attribute' in route['neighbor']['message']['update']:
+                    attribute = route['neighbor']['message']['update']['attribute']
+
+                    origin = attribute['origin'] if 'origin' in attribute else ''
+
+                    temp_as_path = attribute['as-path'] if 'as-path' in attribute else []
+
+                    temp_as_set = attribute['as-set'] if 'as-set' in attribute else []
+
+                    as_path = ' '.join(map(str, temp_as_path)).replace('[', '').replace(']', '').replace(',', '')
+                    if len(temp_as_set) > 0:
+                        as_path += ' ( ' + ' '.join(map(str, sorted(list(temp_as_set), key=int))).replace('[',
+                                                                                                          '').replace(
+                            ']', '').replace(',', '') + ' )'
+
+                    if LOG:
+                        print "AS PATH: " + str(attribute['as-path'] if 'as-path' in attribute else "empty")
+                        print "AS SET: " + str(attribute['as-set'] if 'as-set' in attribute else "empty")
+                        print "COMBINATION: " + str(as_path)
+
+                    med = attribute['med'] if 'med' in attribute else ''
+
+                    community = attribute['community'] if 'community' in attribute else ''
+                    communities = ''
+                    for c in community:
+                        communities += ':'.join(map(str, c)) + " "
+
+                    atomic_aggregate = attribute['atomic-aggregate'] if 'atomic-aggregate' in attribute else ''
+
+                if 'announce' in route['neighbor']['message']['update']:
+                    announce = route['neighbor']['message']['update']['announce']
+                    if 'ipv4 unicast' in announce:
+                        for next_hop in announce['ipv4 unicast'].keys():
+                            for prefix in announce['ipv4 unicast'][next_hop].keys():
+                                self.add_route("input",
+                                               participant,
+                                               prefix,
+                                               (
+                                                   next_hop,
+                                                   origin,
+                                                   as_path,
+                                                   communities,
+                                                   med,
+                                                   atomic_aggregate
+                                               )
+                                               )
+                                self.rib.commit()
+                                announce_route = self.get_routes("input", participant, prefix, None, False)
+
+                                route_list.append({'announce': announce_route})
+
+                elif 'withdraw' in route['neighbor']['message']['update']:
+                    withdraw = route['neighbor']['message']['update']['withdraw']
+                    if 'ipv4 unicast' in withdraw:
+                        for prefix in withdraw['ipv4 unicast'].keys():
+                            deleted_route = self.get_routes("input", participant, prefix, None, False)
+                            self.rib.delete("input", prefix)
+                            self.rib.commit()
+
+                            route_list.append({'withdraw': deleted_route})
+        return route_list
+
+    def process_notification(self, participant, route):
+        if 'shutdown' == route['notification']:
+            self.delete_all_routes("input", participant)
+            self.delete_all_routes("local", participant)
+            self.delete_all_routes("output", participant)
+
+            # TODO: send shutdown notification to participants
+
+    # Helper Methods
+    def add_route(self, rib_name, participant, prefix, attributes):
+        self.rib.add(rib_name, participant, prefix, attributes)
+        self.rib.commit()
+
+    def get_routes(self, rib_name, participant, prefix, next_hop, all_entries):
+        key_items = dict()
+        if participant:
+            key_items['participant'] = participant
+        if prefix:
+            key_items['prefix'] = prefix
+        if next_hop:
+            key_items['next_hop'] = next_hop
+        return self.rib.get(rib_name, key_items, all_entries)
+
+    def delete_route(self, rib_name, participant, prefix):
+        key_items = {
+            "participant": participant,
+            "prefix": prefix
+        }
+        self.rib.delete(rib_name, key_items)
+        self.rib.commit()
+
+    def delete_all_routes(self, rib_name, participant):
+        key_items = {
+            "participant": participant
+        }
+        self.rib.delete(rib_name, key_items)
+        self.rib.commit()
+
+    def get_all_prefixes_advertised(self, from_participant, to_participant=None):
+        """
+        all prefixes that from_participant advertised to to_participant
+        :param from_participant:
+        :param to_participant:
+        :return: set of prefix strings
+        """
+        prefixes = set()
+        if to_participant and to_participant not in self.config.participants[from_participant].peers_in:
+            return None
+
+        routes = self.get_routes("input", from_participant, None, None, True)
+
+        for route in routes:
+            prefixes.add(route["prefix"])
+
+        return prefixes
+
+    def get_all_participants_advertising(self, prefix, to_participant=None):
+        """
+        all participants that advertise prefix
+        :param prefix:
+        :param to_participant:
+        :return: set of participant ids
+        """
+        participants = set()
+
+        routes = self.get_routes('input', None, prefix, None, True)
+
+        for route in routes:
+            participant = route['participant']
+
+            if not (to_participant and to_participant in self.config.participants[participant].peers_in):
+                participants.add(participant)
+
+        return participants
+
+    def get_all_receiver_participants(self, prefix, from_participant=None):
+        """
+        all participants that got an advertisement for prefix
+        :param prefix:
+        :param from_participant: optional
+        :return: set of participants
+        """
+        participants = set()
+
+        if from_participant:
+            route = self.get_routes('input', from_participant, prefix, None, False)
+            if route:
+                participants = set(self.config.participants[from_participant].peers_in)
+        else:
+            routes = self.get_routes('local', None, prefix, None, True)
+            for route in routes:
+                participants.add(route['participant'])
+        return participants
+
+    def get_best_path_participants(self, ingress_participant):
+        """
+        all participants that ingress_participant uses for a best path
+        :param ingress_participant:
+        :return: set of participants
+        """
+        participants = set()
+        routes = self.get_routes('local', ingress_participant, None, None, True)
+        for route in routes:
+            participants.add(self.config.portip_2_participant[route['next_hop']])
+        return participants
+
+    def get_all_participants_using_best_path(self, prefix, egress_participant):
+        """
+        all participants that use egress_participant for a best path
+        :param prefix:
+        :param egress_participant:
+        :return: set of participants
+        """
+        participants = set()
+
+        next_hops = self.config.participant_2_portip[egress_participant]
+
+        for next_hop in next_hops:
+            routes = self.get_routes("local", None, prefix, next_hop, True)
+            for route in routes:
+                participants.add(route['participant'])
+        return participants
+
+    def get_route(self, prefix, from_participant, to_participant=None):
+        """
+        get route for prefix that from_participant advertised to to_participant
+        :param prefix:
+        :param from_participant:
+        :param to_participant:
+        :return:route dict
+        """
+        route = self.get_routes("input", from_participant, prefix, None, False)
+        if not (to_participant and to_participant not in self.config.participants[from_participant].peers_in):
+            return route
+        return None
+
+    def get_all_participant_sets(self, prefix_2_vnh):
+        participant_sets = []
+
+        for prefix in prefix_2_vnh:
+            participant_sets.append(self.get_all_participants_advertising(prefix))
+
+        return participant_sets

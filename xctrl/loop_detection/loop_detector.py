@@ -176,10 +176,9 @@ class LoopDetector(XCTRLModule):
                             active_policies = True if ingress_participants else False
                             ingress_participants.update(self.rib.get_all_participants_using_best_path(msg["prefix"],
                                                                                                       egress_participant))
-                            filter_participants = self.rib.get_all_receiver_participants(msg["prefix"],
-                                                                                         egress_participant)
-                            ingress_participants = ingress_participants.intersection(filter_participants)
-                            filter_participants = self.rib.get_all_participants_advertising(msg["prefix"])
+                            filter_participants_2 = self.rib.get_all_receiver_participants(msg["prefix"],
+                                                                                           egress_participant)
+                            ingress_participants = ingress_participants.intersection(filter_participants_2)
                             ingress_participants = ingress_participants.difference(filter_participants)
 
                             receiver_participant = self.get_first_sdx_participant_on_path(msg["prefix"], egress_participant)

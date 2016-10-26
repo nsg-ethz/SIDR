@@ -71,4 +71,5 @@ def _receiver(time_2_policy, queue):
             for data in time_2_policy[ind]:
                 queue.put(json.dumps(data))
         time.sleep(1)
+    queue.put("DONE")
 
