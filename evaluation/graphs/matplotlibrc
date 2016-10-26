@@ -1,0 +1,21 @@
+axes.labelsize  : 9.0  # fontsize of the x any y labels  
+axes.linewidth  : 0.5
+axes.color_cycle: 348ABD, A60628, 7A68A6, 467821, CF4457, 188487, E24A33
+
+xtick.labelsize : 9.0  # fontsize of the tick labels
+xtick.major.width: 0.25
+xtick.minor.width: 0.25
+
+ytick.labelsize : 9.0  # fontsize of the tick labels
+ytick.major.width: 0.25
+ytick.minor.width: 0.25
+
+legend.fontsize : 9.0  
+legend.frameon  : True
+patch.linewidth  : 0.5
+
+font.family     : serif  
+font.serif      : Times  
+text.usetex     : True  # use latex for all text handling  
+figure.figsize  : 4, 2.5
+
