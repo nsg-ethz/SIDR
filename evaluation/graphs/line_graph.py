@@ -56,7 +56,7 @@ def main(argv):
     # add some text for labels, title and axes ticks
     plt.ylabel('Time [s]')
     plt.xlabel('Number of ' + x_label)
-    plt.legend((p1[0], p2[0], p3[0]), ('5th Percentile', 'Median', '95th Percentile'), loc='upper right', ncol=1)
+    plt.legend((p1[0], p2[0], p3[0]), ('5th Percentile', 'Median', '95th Percentile'), loc='upper left', ncol=1)
 
     plt.savefig(example + '.pdf', bbox_inches='tight')
 
