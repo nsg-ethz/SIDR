@@ -23,8 +23,8 @@ class SQLRIB():
             cursor = self.db.cursor()
             for name in names:
                 cursor.execute(
-                    'CREATE TABLE IF NOT EXISTS ' + str(name) + ' (participant TEXT, prefix TEXT, next_hop TEXT, '
-                    'origin TEXT, as_path TEXT, communities TEXT, med INTEGER, atomic_aggregate BOOLEAN, '
+                    'CREATE TABLE IF NOT EXISTS ' + str(name) + ' (participant INT, prefix TEXT, next_hop TEXT, '
+                    'origin TEXT, as_path TEXT, communities TEXT, med INT, atomic_aggregate BOOLEAN, '
                     'PRIMARY KEY (participant, prefix))')
 
             self.db.commit()
@@ -40,11 +40,11 @@ class SQLRIB():
 
             if isinstance(item, tuple) or isinstance(item, list):
                 cursor.execute('INSERT OR REPLACE INTO ' + name + '(participant, prefix, next_hop, origin, as_path, '
-                               'communities, med, atomic_aggregate) VALUES(?,?,?,?,?,?,?)',
+                               'communities, med, atomic_aggregate) VALUES(?,?,?,?,?,?,?,?)',
                                (participant, prefix, item[0], item[1], item[2], item[3], item[4], item[5]))
             elif isinstance(item, dict) or isinstance(item, sqlite3.Row):
-                cursor.execute('INSERT OR REPLACE INTO ' + name + '(prefix, next_hop, origin, as_path, communities, '
-                               'med, atomic_aggregate) VALUES(?,?,?,?,?,?,?)',
+                cursor.execute('INSERT OR REPLACE INTO ' + name + '(participant, prefix, next_hop, origin, as_path, '
+                               'communities, med, atomic_aggregate) VALUES(?,?,?,?,?,?,?,?)',
                                (participant, prefix, item['next_hop'], item['origin'], item['as_path'],
                                 item['communities'], item['med'], item['atomic_aggregate']))
 

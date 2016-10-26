@@ -125,7 +125,7 @@ def bgp_routes_are_equal(route1, route2):
 
 
 def bgp_make_route_advertisement(route_server, participant_name, prefix):
-    route = route_server.rib.get_route('local', participant_name, prefix, None, False)
+    route = route_server.rib.get_routes('local', participant_name, prefix, None, False)
 
     next_hop = route_server.config.vmac_encoder.prefix_2_vnh[prefix]
 

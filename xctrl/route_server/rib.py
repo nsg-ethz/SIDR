@@ -3,7 +3,7 @@
 #  Muhammad Shahbaz (muhammad.shahbaz@gatech.edu)
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
-from rib_backend import SQL_RIB
+from rib_backend import SQLRIB
 
 LOG = False
 
@@ -13,7 +13,7 @@ class RIB(object):
         self.down = True
         self.config = config
         sdx_id = self.config.id
-        self.rib = SQL_RIB(sdx_id, ["input", "local", "output"])
+        self.rib = SQLRIB(sdx_id, ["input", "local", "output"])
 
     def update(self, participant, route):
         origin = None
@@ -122,13 +122,13 @@ class RIB(object):
 
     # Helper Methods
     def add_route(self, rib_name, participant, prefix, attributes):
-        self.rib.add(rib_name, participant, prefix, attributes)
+        self.rib.add(rib_name, int(participant), prefix, attributes)
         self.rib.commit()
 
     def get_routes(self, rib_name, participant, prefix, next_hop, all_entries):
         key_items = dict()
         if participant:
-            key_items['participant'] = participant
+            key_items['participant'] = int(participant)
         if prefix:
             key_items['prefix'] = prefix
         if next_hop:
@@ -137,7 +137,7 @@ class RIB(object):
 
     def delete_route(self, rib_name, participant, prefix):
         key_items = {
-            "participant": participant,
+            "participant": int(participant),
             "prefix": prefix
         }
         self.rib.delete(rib_name, key_items)
@@ -145,7 +145,7 @@ class RIB(object):
 
     def delete_all_routes(self, rib_name, participant):
         key_items = {
-            "participant": participant
+            "participant": int(participant)
         }
         self.rib.delete(rib_name, key_items)
         self.rib.commit()
