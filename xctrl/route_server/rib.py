@@ -106,8 +106,7 @@ class RIB(object):
                     if 'ipv4 unicast' in withdraw:
                         for prefix in withdraw['ipv4 unicast'].keys():
                             deleted_route = self.get_routes("input", participant, prefix, None, False)
-                            self.rib.delete("input", prefix)
-                            self.rib.commit()
+                            self.delete_route("input", participant, prefix)
 
                             route_list.append({'withdraw': deleted_route})
         return route_list
