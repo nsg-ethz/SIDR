@@ -2,7 +2,7 @@
 
 # Run RIB Update Timing Evaluation
 
-# for i in 50 100 150 200 250 300 350 400 450 500; do
+#for i in 50 100 150 200 250 300 350 400 450 500; do
 for i in 350 400 450 500; do
 
     example_name="rib_timing_$i"
@@ -16,8 +16,8 @@ for i in 350 400 450 500; do
     python ~/GitHub/supercharged_sdx/policy_submitter/policy_sender.py "$example_name" 1 &
     pid3=$!
 
-    echo "Going to sleep for 400s - $(date +"%T")"
-    sleep 400s
+    echo "Going to sleep for 1100s - $(date +"%T")"
+    sleep 1100s
     echo "DONE - now you have to cleanup - $(date +"%T")"
 
     sudo kill -9 "$pid1"

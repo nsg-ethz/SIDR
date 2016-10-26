@@ -4,7 +4,7 @@ import argparse
 
 from multiprocessing.connection import Client
 
-LOG = True
+LOG = False
 
 
 class Notifier(object):

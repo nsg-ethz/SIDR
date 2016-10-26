@@ -51,7 +51,7 @@ def main(argv):
                     msg_type = 'announce'
                     prev_announce = True
                 
-                if i == 0:
+                if i == 0 and start_time > 10:
                     as_path = '7000,7100'
                 elif msg_type == 'announce':
                     as_path = random.choice(as_paths)
