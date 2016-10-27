@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
   
   ## Guest Config
   config.vm.hostname = "sdx-ryu"
-  config.vm.network :private_network, ip: "192.168.0.300"
+  config.vm.network :private_network, ip: "192.168.0.30"
   config.vm.network :forwarded_port, guest:6633, host:6637 # forwarding of port
 
   ## Provisioning

@@ -124,15 +124,21 @@ class RIB(object):
         self.rib.add(rib_name, int(participant), prefix, attributes)
         self.rib.commit()
 
-    def get_routes(self, rib_name, participant, prefix, next_hop, all_entries):
+    def get_routes(self, rib_name, columns, participants, prefix, next_hop, all_entries):
         key_items = dict()
-        if participant:
-            key_items['participant'] = int(participant)
+        key_sets = None
+
         if prefix:
             key_items['prefix'] = prefix
         if next_hop:
             key_items['next_hop'] = next_hop
-        return self.rib.get(rib_name, key_items, all_entries)
+        if participants:
+            if isinstance(participants, list):
+                key_sets = ('participant', [int(participant) for participant in participants])
+            else:
+                key_items['participant'] = int(participants)
+
+        return self.rib.get(rib_name, columns, key_sets, key_items, all_entries)
 
     def delete_route(self, rib_name, participant, prefix):
         key_items = {
@@ -157,13 +163,15 @@ class RIB(object):
         :return: set of prefix strings
         """
         prefixes = set()
+        columns = ['prefix']
+
         if to_participant and to_participant not in self.config.participants[from_participant].peers_in:
             return None
 
-        routes = self.get_routes("input", from_participant, None, None, True)
+        routes = self.get_routes('input', columns, from_participant, None, None, True)
 
         for route in routes:
-            prefixes.add(route["prefix"])
+            prefixes.add(route['prefix'])
 
         return prefixes
 
@@ -175,14 +183,13 @@ class RIB(object):
         :return: set of participant ids
         """
         participants = set()
+        columns = ['participant']
 
-        routes = self.get_routes('input', None, prefix, None, True)
+        routes = self.get_routes('input', columns, None, prefix, None, True)
 
-        for route in routes:
-            participant = route['participant']
-
-            if not (to_participant and to_participant in self.config.participants[participant].peers_in):
-                participants.add(participant)
+        participants = set([route['participant'] for route in routes])
+        if to_participant:
+            participants = participants.intersection(self.config.participants[to_participant].peers_out)
 
         return participants
 
@@ -194,15 +201,15 @@ class RIB(object):
         :return: set of participants
         """
         participants = set()
+        columns = ['participant']
 
         if from_participant:
-            route = self.get_routes('input', from_participant, prefix, None, False)
+            route = self.get_routes('input', columns, from_participant, prefix, None, False)
             if route:
                 participants = set(self.config.participants[from_participant].peers_in)
         else:
-            routes = self.get_routes('local', None, prefix, None, True)
-            for route in routes:
-                participants.add(route['participant'])
+            routes = self.get_routes('local', columns, None, prefix, None, True)
+            participants = set([route['participant'] for route in routes])
         return participants
 
     def get_best_path_participants(self, ingress_participant):
@@ -212,12 +219,13 @@ class RIB(object):
         :return: set of participants
         """
         participants = set()
-        routes = self.get_routes('local', ingress_participant, None, None, True)
-        for route in routes:
-            participants.add(self.config.portip_2_participant[route['next_hop']])
+        columns = ['next_hop']
+
+        routes = self.get_routes('local', columns, ingress_participant, None, None, True)
+        participants = set([self.config.portip_2_participant[route['next_hop']] for route in routes])
         return participants
 
-    def get_all_participants_using_best_path(self, prefix, egress_participant):
+    def get_all_participants_using_best_path(self, prefix=None, egress_participant=None):
         """
         all participants that use egress_participant for a best path
         :param prefix:
@@ -225,13 +233,14 @@ class RIB(object):
         :return: set of participants
         """
         participants = set()
+        columns = ['participant']
 
         next_hops = self.config.participant_2_portip[egress_participant]
 
         for next_hop in next_hops:
-            routes = self.get_routes("local", None, prefix, next_hop, True)
-            for route in routes:
-                participants.add(route['participant'])
+            routes = self.get_routes('local', columns, None, prefix, next_hop, True)
+            participants.update(set([route['participant'] for route in routes]))
+
         return participants
 
     def get_route(self, prefix, from_participant, to_participant=None):
@@ -242,7 +251,7 @@ class RIB(object):
         :param to_participant:
         :return:route dict
         """
-        route = self.get_routes("input", from_participant, prefix, None, False)
+        route = self.get_routes('input', None, from_participant, prefix, None, False)
         if not (to_participant and to_participant not in self.config.participants[from_participant].peers_in):
             return route
         return None

@@ -54,23 +54,24 @@ class RouteServer(XCTRLModule):
                     route = json.loads(route)
 
                     # process route advertisements - add/remove routes to/from rib of respective participant (neighbor)
-                    updates = None
 
                     if 'neighbor' in route:
                         if 'ip' in route['neighbor']:
-                            updates = self.rib.update(self.config.portip_2_participant[route['neighbor']['ip']], route)
+                            in_participant = self.config.portip_2_participant[route['neighbor']['ip']]
+                            updates = self.rib.update(in_participant, route)
+
+                            # update local ribs - select best route for each prefix
+                            for update in updates:
+                                affected_participants = self.config.participants[in_participant].peers_in
+
+                                decision_process(self.rib, affected_participants, self.config.participants, update)
+
+                            event = XCTRLEvent("RouteServer", "RIB UPDATE", updates)
+                            self.event_queue.put(event)
+
                     elif 'notification' in route:
                         for participant in self.config.participants:
                             self.rib.process_notification(participant, route)
-
-                    if updates is not None:
-                        # update local ribs - select best route for each prefix
-                        for update in updates:
-                            participants = self.config.participants.keys()
-                            decision_process(self.rib, participants, update)
-
-                        event = XCTRLEvent("RouteServer", "RIB UPDATE", updates)
-                        self.event_queue.put(event)
 
             except Queue.Empty:
                 # self.logger.debug("Empty Queue")

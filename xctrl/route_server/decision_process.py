@@ -7,24 +7,21 @@ import socket
 import struct
 
 
-def decision_process(rib, participants, route):
+def decision_process(rib, affected_participants, participants_structure, route):
     best_routes = []
 
     # Need to loop through all participants
     if 'announce' in route:
         announce_route = route['announce']
         
-        for participant in participants:
+        for participant in affected_participants:
             routes = []
             # Need to loop through participants to build up routes, don't include current participant
-            for in_participant in participants:
-                if participant != in_participant:
-                    routes.extend(rib.get_routes('input',
-                                                 in_participant,
-                                                 announce_route['prefix'],
-                                                 None,
-                                                 True))
-            
+
+            advertising_participants = participants_structure[participant].peers_out
+
+            routes = rib.get_routes('input', None, advertising_participants, announce_route['prefix'], None, True)
+
             if routes:
                 best_route = best_path_selection(routes)
                 best_routes.append({'announce': best_route})
@@ -37,20 +34,15 @@ def decision_process(rib, participants, route):
         deleted_route = route['withdraw']
         
         if deleted_route is not None:
-            for participant in participants:
+            for participant in affected_participants:
                 
                 # delete route if being used
-                if rib.get_routes('local', participant, deleted_route['prefix'], None, True):
+                if rib.get_routes('local', ['prefix'], participant, deleted_route['prefix'], None, True):
                     rib.delete_route('local', participant, deleted_route['prefix'])
-                    
-                    routes = []
-                    for in_participant in participants:
-                        if participant != in_participant:
-                            routes.extend(rib.get_routes('input',
-                                                         in_participant,
-                                                         deleted_route['prefix'],
-                                                         None,
-                                                         True))
+
+                    advertising_participants = participants_structure[participant].peers_out
+
+                    routes = rib.get_routes('input', None, advertising_participants, deleted_route['prefix'], None, True)
                     
                     if routes:
                         best_route = best_path_selection(routes)

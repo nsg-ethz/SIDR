@@ -35,6 +35,10 @@ class PolicyHandler(XCTRLModule):
 
         self.logger.info('init')
 
+        self.ingress_participants = defaultdict(set)
+        self.egress_participants = defaultdict(set)
+
+
         self.run = False
         self.listener = None
 
@@ -63,26 +67,36 @@ class PolicyHandler(XCTRLModule):
                 start_time = time.clock()
 
             for policy in policies:
-                if policy["type"] == "outbound":
-                    safe_to_install = self.loop_detector.activate_policy(policy["participant"], policy["action"]["fwd"])
-                    fwd = policy["action"]["fwd"]
+
+                ingress_participant = policy["participant"]
+                egress_participant = policy["action"]["fwd"]
+                type = policy["type"]
+                match = policy["match"]
+                action = policy["action"]
+
+                if type == "outbound":
+                    safe_to_install = self.loop_detector.activate_policy(ingress_participant, egress_participant)
                 else:
                     safe_to_install = True
-                    fwd = policy["action"]["fwd"]
 
                 if safe_to_install:
                     if not self.test:
-                        cookie = self.controller.add_flow_rule(policy["participant"],
-                                                               policy["type"],
-                                                               policy["match"],
-                                                               fwd)
+                        cookie = self.controller.add_flow_rule(ingress_participant,
+                                                               type,
+                                                               match,
+                                                               egress_participant)
                     else:
                         cookie = 0
 
-                    self.policies[policy["participant"]][policy["type"]].append(Policy(cookie,
-                                                                                       policy["match"],
-                                                                                       policy["action"],
-                                                                                       fwd))
+                    self.policies[ingress_participant][type].append(Policy(cookie,
+                                                                           match,
+                                                                           action,
+                                                                           egress_participant))
+
+                    # update structures
+                    if type == "outbound":
+                        self.ingress_participants[egress_participant].add(ingress_participant)
+                        self.egress_participants[ingress_participant].add(egress_participant)
 
                     i += 1
 
@@ -100,18 +114,10 @@ class PolicyHandler(XCTRLModule):
         self.run = False
 
     def get_egress_participants(self, ingress_participant):
-        egress_participants = set()
-        for policy in self.policies[ingress_participant]["outbound"]:
-            egress_participants.add(policy.forward_participant)
-        return egress_participants
+        return self.egress_participants[ingress_participant]
 
     def get_ingress_participants(self, egress_participant):
-        ingress_participants = set()
-        for participant in self.policies:
-            for policy in self.policies[participant]["outbound"]:
-                if policy.forward_participant == egress_participant:
-                    ingress_participants.add(participant)
-        return ingress_participants
+        return self.ingress_participants[egress_participant]
 
     def update_policies(self):
         # after change of supersets, update policies in the dataplane, only outbound policies need to be changed
