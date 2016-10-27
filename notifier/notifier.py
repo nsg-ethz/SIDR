@@ -51,6 +51,10 @@ class Notifier(object):
                     socket.close()
                 time.sleep(1)
 
+        socket = Client((address, port))
+        socket.send('DONE')
+        socket.close()
+
 ''' main '''
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

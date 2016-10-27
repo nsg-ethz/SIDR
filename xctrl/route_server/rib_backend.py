@@ -72,8 +72,6 @@ class SQLRIB():
                 query += ' WHERE '
                 query += ' AND '.join([key for key in keys])
 
-                print str(query)
-
                 cursor.execute(query, values)
             else:
                 cursor.execute(query)
@@ -165,8 +163,6 @@ class LocalRIB(object):
         elif key_items and 'participant' in key_items:
             participants = [key_items.pop('participant')]
 
-        results = list()
-
         next_hop = None
         prefix = None
         if key_items:
@@ -200,14 +196,16 @@ class LocalRIB(object):
                     if not all_entries:
                         break
 
+        results = None
         if all_entries:
+            results = list()
             for key in keys:
                 if key in self.tables[name]:
                     results.append(self.tables[name][key]._asdict())
         else:
             for key in keys:
                 if key in self.tables[name]:
-                    results.append(self.tables[name][key]._asdict())
+                    results = self.tables[name][key]._asdict()
                     break
 
         return results
@@ -222,33 +220,34 @@ class LocalRIB(object):
             prefix = key_items['prefix']
 
         keys = None
-        if prefix and not participant:
+        if prefix and not participant and (name, prefix) in self.prefix_to_entry:
             keys = self.prefix_to_entry[(name, prefix)]
 
-        elif prefix and participant:
+        elif prefix and participant and (name, participant, prefix) in self.participant_and_prefix_to_entry:
             keys = [self.participant_and_prefix_to_entry[(name, participant, prefix)]]
 
-        elif not prefix and participant:
+        elif not prefix and participant and (name, participant) in self.participant_to_entry:
             keys = self.participant_to_entry[(name, participant)]
+     
+        if keys:
+            tmp_keys = set(keys)
+            for key in tmp_keys:
+                entry = self.tables[name][key]
 
-        tmp_keys = set(keys)
-        for key in tmp_keys:
-            entry = self.tables[name][key]
+                if (name, entry.participant) in self.participant_to_entry:
+                    self.participant_to_entry[(name, entry.participant)].remove(key)
 
-            if (name, entry.participant) in self.participant_to_entry:
-                self.participant_to_entry[(name, entry.participant)].remove(key)
+                if (name, entry.prefix) in self.prefix_to_entry:
+                    self.prefix_to_entry[(name, entry.prefix)].remove(key)
 
-            if (name, entry.prefix) in self.prefix_to_entry:
-                self.prefix_to_entry[(name, entry.prefix)].remove(key)
+                if (name, entry.participant, entry.prefix) in self.participant_and_prefix_to_entry:
+                    del self.participant_and_prefix_to_entry[name, entry.participant, entry.prefix]
 
-            if (name, entry.participant, entry.prefix) in self.participant_and_prefix_to_entry:
-                del self.participant_and_prefix_to_entry[name, entry.participant, entry.prefix]
+                if (name, entry.prefix, entry.next_hop) in self.prefix_and_next_hop_to_entry:
+                    self.prefix_and_next_hop_to_entry[(name, entry.prefix, entry.next_hop)].remove(key)
 
-            if (name, entry.prefix, entry.next_hop) in self.prefix_and_next_hop_to_entry:
-                self.prefix_and_next_hop_to_entry[(name, entry.prefix, entry.next_hop)].remove(key)
-
-            if key in self.tables[name]:
-                del self.tables[name][key]
+                if key in self.tables[name]:
+                    del self.tables[name][key]
 
     def commit(self):
         pass

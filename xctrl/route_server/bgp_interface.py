@@ -20,7 +20,7 @@ def get_all_as_paths(prefix, participants):
     as_sets = {}
    
     for participant_name in participants:
-        route = participants[participant_name].get_routes('input', prefix)
+        route = participants[participant_name].get_routes('input', ['as_path'], None, prefix, None, True)
         if route:
             as_sets[participant_name] = route['as_path']
             
@@ -54,7 +54,7 @@ def bgp_update_peers(updates, config, route_server):
                 # only announce route if at least one of the peers advertises it to that participant
                 if route:     
                     # check if we have already announced that route
-                    prev_route = route_server.rib.get_routes("output", participant_name, prefix, None, False)
+                    prev_route = route_server.rib.get_routes("output", None, participant_name, prefix, None, False)
                     
                     if not bgp_routes_are_equal(route, prev_route):
                         # store announcement in output rib
@@ -81,7 +81,7 @@ def bgp_update_peers(updates, config, route_server):
             # send custom route advertisements based on peerings
             for participant_name in config.participants:
                 # only modify route advertisement if this route has been advertised to the participant
-                prev_route = route_server.rib.get_routes("output", participant_name, prefix, None, False)
+                prev_route = route_server.rib.get_routes("output", None, participant_name, prefix, None, False)
                 if prev_route: 
                     route = bgp_make_route_advertisement(route_server, participant_name, prefix)
                     # withdraw if no one advertises that route, else update reachability
@@ -125,7 +125,7 @@ def bgp_routes_are_equal(route1, route2):
 
 
 def bgp_make_route_advertisement(route_server, participant_name, prefix):
-    route = route_server.rib.get_routes('local', participant_name, prefix, None, False)
+    route = route_server.rib.get_routes('local', None, participant_name, prefix, None, False)
 
     next_hop = route_server.config.vmac_encoder.prefix_2_vnh[prefix]
 

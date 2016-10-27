@@ -3,7 +3,7 @@
 #  Muhammad Shahbaz (muhammad.shahbaz@gatech.edu)
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
-from rib_backend import SQLRIB
+from rib_backend import LocalRIB
 
 LOG = False
 
@@ -13,7 +13,7 @@ class RIB(object):
         self.down = True
         self.config = config
         sdx_id = self.config.id
-        self.rib = SQLRIB(sdx_id, ["input", "local", "output"])
+        self.rib = LocalRIB(sdx_id, ["input", "local", "output"])
 
     def update(self, participant, route):
         origin = None
@@ -29,7 +29,7 @@ class RIB(object):
                 if LOG:
                     print "PEER DOWN - PARTICIPANT " + str(participant)
 
-                routes = self.get_routes('input', participant, None, None, all)
+                routes = self.get_routes('input', None, participant, None, None, True)
 
                 for route_item in routes:
                     route_list.append({'withdraw': route_item})
@@ -43,7 +43,7 @@ class RIB(object):
                 if LOG:
                     print "PEER UP - PARTICIPANT " + str(participant)
 
-                routes = self.get_routes('local', participant, None, None, all)
+                routes = self.get_routes('local', None, participant, None, None, True)
 
                 for route_item in routes:
                     route_list.append({'re-announce': route_item})
@@ -97,7 +97,7 @@ class RIB(object):
                                                )
                                                )
                                 self.rib.commit()
-                                announce_route = self.get_routes("input", participant, prefix, None, False)
+                                announce_route = self.get_routes("input", None, participant, prefix, None, False)
 
                                 route_list.append({'announce': announce_route})
 
@@ -105,7 +105,7 @@ class RIB(object):
                     withdraw = route['neighbor']['message']['update']['withdraw']
                     if 'ipv4 unicast' in withdraw:
                         for prefix in withdraw['ipv4 unicast'].keys():
-                            deleted_route = self.get_routes("input", participant, prefix, None, False)
+                            deleted_route = self.get_routes("input", None, participant, prefix, None, False)
                             self.delete_route("input", participant, prefix)
 
                             route_list.append({'withdraw': deleted_route})

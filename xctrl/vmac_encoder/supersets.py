@@ -27,7 +27,7 @@ class SuperSetEncoder(XCTRLModule):
                 prefix = update['announce']['prefix']
 
                 # get set of all participants advertising that prefix
-                basic_set = self.rib.get_all_participants_advertising(prefix, self.config.participants)
+                basic_set = self.rib.get_all_participants_advertising(prefix)
 
                 # check if this set is a subset of one of the existing supersets
                 if not SuperSetEncoder.is_subset_of_superset(basic_set, self.supersets):
