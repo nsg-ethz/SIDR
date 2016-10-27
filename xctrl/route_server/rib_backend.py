@@ -16,7 +16,9 @@ class SQLRIB():
         with self.lock:
             # Create a database in RAM
             base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "ribs"))
-            self.db = sqlite3.connect(base_path + '/' + str(sdx_id) + '.db', check_same_thread=False)
+            # self.db = sqlite3.connect(":memory:")
+            # self.db = sqlite3.connect(base_path + '/' + str(sdx_id) + '.db', check_same_thread=False)
+            self.db = sqlite3.connect(':memory:', check_same_thread=False)
             self.db.row_factory = SQLRIB.dict_factory
 
             # Get a cursor object
