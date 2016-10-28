@@ -138,7 +138,7 @@ class LocalCIB(object):
         self.output_eparticipant_prefix_receiver_participant_to_entry = defaultdict(int)
 
     def add_input(self, in_participant, prefix, sender_sdx, sdx_set):
-        entry = LocalCIB.CIBInEntry(in_participant, prefix, sender_sdx, ";".join(str(v) for v in sdx_set))
+        entry = LocalCIB.CIBInEntry(in_participant, prefix, sender_sdx, sdx_set)
 
         index = self.ends['input']
 
@@ -149,7 +149,7 @@ class LocalCIB(object):
         self.ends['input'] += 1
 
     def add_local(self, in_participant, prefix, sdx_set):
-        entry = LocalCIB.CIBLocEntry(in_participant, prefix, ";".join(str(v) for v in sdx_set))
+        entry = LocalCIB.CIBLocEntry(in_participant, prefix, sdx_set)
 
         index = self.ends['local']
 
@@ -159,7 +159,7 @@ class LocalCIB(object):
         self.ends['local'] += 1
 
     def add_output(self, e_participant, prefix, receiver_participant, sdx_set):
-        entry = LocalCIB.CIBOutEntry(e_participant, prefix, receiver_participant, ";".join(str(v) for v in sdx_set))
+        entry = LocalCIB.CIBOutEntry(e_participant, prefix, receiver_participant, sdx_set)
 
         index = self.ends['output']
         self.tables['output'][index] = entry
