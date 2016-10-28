@@ -200,12 +200,12 @@ class LocalRIB(object):
         if all_entries:
             results = list()
             tmp_keys = set(keys)
-            for key in keys:
+            for key in tmp_keys:
                 if key in self.tables[name]:
                     results.append(self.tables[name][key]._asdict())
         else:
             tmp_keys = set(keys)
-            for key in keys:
+            for key in tmp_keys:
                 if key in self.tables[name]:
                     results = self.tables[name][key]._asdict()
                     break
