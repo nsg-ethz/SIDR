@@ -93,26 +93,17 @@ class LoopDetector(XCTRLModule):
         policy_in_participants = self.policy_handler.get_ingress_participants(egress_participant)
         allowed_in_participants = self.config.participants[egress_participant].peers_in
 
-        print '1: ' + str(clock()-start_time) + 's'
-        start_time = clock()
-
         # Check for each prefix separately whether the policy is safe
         active_policies = True
         allowed_prefixes = list()
         prefixes = self.rib.get_all_prefixes_advertised(egress_participant, ingress_participant)
 
-        print '2: ' + str(clock()-start_time) + 's'
-        start_time = clock()
-
-        i = 0
         for prefix in prefixes:
             if LOG:
                 print "prefix: " + str(prefix) + ", egress: " + str(egress_participant)
                 print "forbidden: " + str(self.forbidden_paths)
             if egress_participant not in self.forbidden_paths[ingress_participant][prefix]:
                 allowed_prefixes.append(prefix)
-
-                l_start_time = clock()
 
                 # remove all participants from in_participants that have a direct route to prefix
                 best_path_in_participants = self.rib.get_all_participants_using_best_path(prefix, egress_participant)
@@ -123,10 +114,6 @@ class LoopDetector(XCTRLModule):
 
                 ingress_participants.add(ingress_participant)
                 receiver_participant = self.get_first_sdx_participant_on_path(prefix, egress_participant)
-
-                if 499 < i < 506:
-                    print 'im Loop 1: ' + str(clock()-l_start_time) + 's'
-                l_start_time = clock()
 
                 if receiver_participant:
                     update, old_cib_entry, new_cib_entry = self.cib.update_out(egress_participant,
@@ -140,12 +127,6 @@ class LoopDetector(XCTRLModule):
                     timestamp = time()
 
                     self.notify_nh_sdx(update, old_cib_entry, new_cib_entry, timestamp, random_value)
-
-                if 499 < i < 506:
-                    print 'im Loop 2: ' + str(clock()-l_start_time) + 's'
-                i += 1
-
-        print '2: ' + str(clock()-start_time) + 's'
 
         if allowed_prefixes:
             return True
