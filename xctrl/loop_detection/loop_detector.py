@@ -84,31 +84,24 @@ class LoopDetector(XCTRLModule):
 
         self.logger.debug("Received Activation Request from " + str(ingress_participant) +
                           " to " + str(egress_participant))
-        
-        start_time = clock()
 
         # get all participants that use egress_participant in a policy
         # NOTE: We make the assumption that if egress_participant decides to advertise to another participant, it
         # advertises all of its prefixes and not only selection
         policy_in_participants = self.policy_handler.get_ingress_participants(egress_participant)
-        allowed_in_participants = self.config.participants[egress_participant].peers_in
 
         # Check for each prefix separately whether the policy is safe
         active_policies = True
-        allowed_prefixes = list()
+        allowed_prefixes = False
         prefixes = self.rib.get_all_prefixes_advertised(egress_participant, ingress_participant)
 
         for prefix in prefixes:
-            if LOG:
-                print "prefix: " + str(prefix) + ", egress: " + str(egress_participant)
-                print "forbidden: " + str(self.forbidden_paths)
             if egress_participant not in self.forbidden_paths[ingress_participant][prefix]:
-                allowed_prefixes.append(prefix)
+                allowed_prefixes = True
 
                 # remove all participants from in_participants that have a direct route to prefix
                 best_path_in_participants = self.rib.get_all_participants_using_best_path(prefix, egress_participant)
-                tmp_in_participants = policy_in_participants.union(best_path_in_participants)
-                in_participants = tmp_in_participants.intersection(allowed_in_participants)
+                in_participants = policy_in_participants.union(best_path_in_participants)
                 filter_participants = self.rib.get_all_participants_advertising(prefix)
                 ingress_participants = in_participants.difference(filter_participants)
 
@@ -128,9 +121,7 @@ class LoopDetector(XCTRLModule):
 
                     self.notify_nh_sdx(update, old_cib_entry, new_cib_entry, timestamp, random_value)
 
-        if allowed_prefixes:
-            return True
-        return False
+        return allowed_prefixes
 
     def process_correctness_message(self):
         """
@@ -449,7 +440,7 @@ class LoopDetector(XCTRLModule):
                     sdxes = sdxes.union(union)
             as2 = as1
 
-        sdxes = sdxes.difference(set([self.config.id]))
+        sdxes = sdxes.difference({self.config.id})
 
         return sdxes
 

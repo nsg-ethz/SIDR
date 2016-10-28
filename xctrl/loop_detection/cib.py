@@ -166,7 +166,6 @@ class CIB(object):
             return True, old_entry, None
         return False, None, None
 
-
     @staticmethod
     def merge_cl_entries(egress_participant, prefix, sdx_id, cl_entries, receiver_participant, policy):
         if not policy and not cl_entries:
@@ -179,8 +178,8 @@ class CIB(object):
         merged_entry["sdx_set"] = set()
         merged_entry["sdx_set"].add(sdx_id)
         if cl_entries:
-            for entry in cl_entries:
-                merged_entry["sdx_set"] = merged_entry["sdx_set"].union(set([int(v) for v in entry["sdx_set"].split(';')]))
+            all_sets = [[int(v) for v in entry['sdx_set'].split(';')] for entry in cl_entries]
+            merged_entry["sdx_set"] = merged_entry["sdx_set"].union(all_sets)
 
         merged_entry["sdx_set"] = list(merged_entry["sdx_set"])
         merged_entry["sdx_set"].sort()
