@@ -22,11 +22,8 @@ def main(argv):
     examples = [argv.example + '_' + x for x in experiments]
 
     x_values = [int(x) for x in experiments]
-    x_labels = argv.xlabels.split(',')
 
-    x_label = argv.xlabel
-
-    color = ['r', 'g', 'b', 'c']
+    x_label = argv.xlabel.strip('"')
 
     y_values = {
         '5th': list(),
@@ -58,6 +55,12 @@ def main(argv):
     plt.xlabel('Number of ' + x_label)
     plt.legend((p1[0], p2[0], p3[0]), ('5th Percentile', 'Median', '95th Percentile'), loc='upper left', ncol=1)
 
+    if example == 'policy_timing':
+        plt.xticks([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], ['', '2000', '', '4000', '', '6000', '', '8000', '', '10000'])
+
+    else:
+        plt.xticks([50, 100, 150, 200, 250, 300, 350, 400, 450, 500], ['', '100', '', '200', '', '300', '', '400', '', '500'])
+
     plt.savefig(example + '.pdf', bbox_inches='tight')
 
 ''' main '''
@@ -67,7 +70,6 @@ if __name__ == '__main__':
     parser.add_argument('inpath', help='path to example folder')
     parser.add_argument('example', help='name of example folder')
     parser.add_argument('experiments', help='experiments - comma separated list')
-    parser.add_argument('xlabels', help='xlabels - comma separated list')
     parser.add_argument('xlabel', help='xlabel')
 
     args = parser.parse_args()
