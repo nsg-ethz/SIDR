@@ -235,6 +235,7 @@ class Evaluator(object):
             if n.sdx_id in n.sdx_path:
                 self.logger.debug("SDX Loop: " + ",".join([str(x) for x in n.sdx_path]) + "," +
                                   str(n.sdx_id) + " - policy at " + str(sdx_id))
+                return False, hop
 
             sdx_path = list(n.sdx_path)
             sdx_path.append(n.sdx_id)
