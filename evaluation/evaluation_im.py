@@ -49,7 +49,7 @@ class Evaluator(object):
         self.start = start
         self.output = output + "evaluation_" + str(mode) + ".log"
 
-        with open(self.output, 'w', 102400) as output:
+        with open(self.output, 'a', 102400) as output:
             output.write("Total Submitted Policies | "
                          "Safe Policies | "
                          "Simple Loops \n")
@@ -62,7 +62,7 @@ class Evaluator(object):
     def run_evaluation(self):
         start = time.clock()
 
-        for j in range(self.start, self.iterations):
+        for j in range(self.start, self.start + self.iterations):
             # policy stats
             total_policies = 0
             installed_policies = 0
