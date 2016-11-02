@@ -35,7 +35,7 @@ rects3 = plt.bar(index + distance - 0.5 * bar_width, sidr_efficiency*100.0, bar_
 rects3 = plt.bar(index + 2 * distance - 0.5 * bar_width, full_efficiency*100.0, bar_width,
                  color='#E24A33', label='Full')
 
-plt.xticks((index - distance, index, index + distance, index + 2*distance), ('No', 'No Prefixes', 'SIDR', 'Full'))
+plt.xticks((index - distance, index, index + distance, index + 2*distance), ('i', 'ii', 'iii', 'iv'))
 
 plt.xlabel('Knowledge of Policies')
 plt.ylabel('Safe Policies [\%]')

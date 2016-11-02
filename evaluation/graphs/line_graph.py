@@ -55,9 +55,8 @@ def main(argv):
     plt.xlabel('Number of ' + x_label)
     plt.legend((p1[0], p2[0], p3[0]), ('5th Percentile', 'Median', '95th Percentile'), loc='upper left', ncol=1)
 
-    if example == 'policy_timing':
+    if argv.example == 'policy_timing':
         plt.xticks([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], ['', '2000', '', '4000', '', '6000', '', '8000', '', '10000'])
-
     else:
         plt.xticks([50, 100, 150, 200, 250, 300, 350, 400, 450, 500], ['', '100', '', '200', '', '300', '', '400', '', '500'])
 

@@ -44,7 +44,7 @@ def main(argv):
     p3 = plt.bar(0.5 + ind, loops, width, color='#7A68A6', linewidth=0.5, bottom=safe_total)
 
     plt.xlabel('Flowspaces of the Policies')
-    plt.ylabel('Fraction of Policies')
+    plt.ylabel('Policies [\%]')
     plt.xticks(0.5 + ind + width / 2., ('Same', 'Traffic', 'Random'))
     plt.yticks(np.arange(0, 125, 25))
     plt.xlim(0, 3.5)
