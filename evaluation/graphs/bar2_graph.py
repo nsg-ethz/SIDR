@@ -32,12 +32,12 @@ rects2 = plt.bar(index - 0.5 * bar_width, no_prefixes_efficiency*100.0, bar_widt
 rects3 = plt.bar(index + distance - 0.5 * bar_width, sidr_efficiency*100.0, bar_width,
                  color='#188487', label='SIDR')
 
-rects3 = plt.bar(index + 2 * distance - 0.5 * bar_width, full_efficiency*100.0, bar_width,
+rects4 = plt.bar(index + 2 * distance - 0.5 * bar_width, full_efficiency*100.0, bar_width,
                  color='#E24A33', label='Full')
 
-plt.xticks((index - distance, index, index + distance, index + 2*distance), ('i', 'ii', 'iii', 'iv'))
+plt.xticks((index - distance, index, index + distance, index + 2*distance), ('\o', 'No Pfx', 'SIDR', 'Strawman'))
 
 plt.xlabel('Knowledge of Policies')
-plt.ylabel('Safe Policies [\%]')
+plt.ylabel('Policies [\%]')
 plt.yticks(np.arange(0, 125, 25))
 plt.savefig('as_simulation.pdf', bbox_inches='tight')

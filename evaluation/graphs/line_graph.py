@@ -38,7 +38,7 @@ def main(argv):
         with open(input_file) as infile:
             for line in infile:
                 time = float(line.strip())
-                tmp_times.append(time)
+                tmp_times.append(time*1000.0)
 
         tmp_array = np.array(tmp_times)
         y_values['5th'].append(np.percentile(tmp_array, 5))
@@ -51,7 +51,7 @@ def main(argv):
     p3 = plt.plot(x_values, y_values['95th'], '-v')
 
     # add some text for labels, title and axes ticks
-    plt.ylabel('Time [s]')
+    plt.ylabel('Time [ms]')
     plt.xlabel('Number of ' + x_label)
     plt.legend((p1[0], p2[0], p3[0]), ('5th Percentile', 'Median', '95th Percentile'), loc='upper left', ncol=1)
 

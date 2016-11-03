@@ -39,8 +39,8 @@ def main(argv):
     ind = np.arange(N)  # the x locations for the groups
     width = 0.5  # the width of the bars: can also be len(x) sequence
 
-    p1 = plt.bar(0.5 + ind, safe1, width, color='#348ABD', linewidth=0.5)
-    p2 = plt.bar(0.5 + ind, safe2, width, color='#A60628', linewidth=0.5, bottom=safe1)
+    p1 = plt.bar(0.5 + ind, safe1, width, color='#348ABD', linewidth=0.5, hatch='//')
+    p2 = plt.bar(0.5 + ind, safe2, width, color='#A60628', linewidth=0.5, hatch='\\\\', bottom=safe1)
     p3 = plt.bar(0.5 + ind, loops, width, color='#7A68A6', linewidth=0.5, bottom=safe_total)
 
     plt.xlabel('Flowspaces of the Policies')
