@@ -1,5 +1,9 @@
 # Microbenchmarks
 
+## Important
+
+In ../scripts are a couple of scripts that make use of these generators. Hence, it is not necessary to run each step separately.
+
 ## Config Generator
 
 ```bash
