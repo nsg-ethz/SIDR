@@ -13,8 +13,9 @@ class CIB(object):
     def __init__(self, sdx_id):
         self.lock = lock()
         with self.lock:
-            base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "cibs"))
-            self.db = sqlite3.connect(base_path + '/' + str(sdx_id) + '.db', check_same_thread=False)
+            # base_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "cibs"))
+            # self.db = sqlite3.connect(base_path + '/' + str(sdx_id) + '.db', check_same_thread=False)
+            self.db = sqlite3.connect(':memory:', check_same_thread=False)
             self.db.row_factory = sqlite3.Row
 
             # Get a cursor object
@@ -179,7 +180,7 @@ class CIB(object):
         merged_entry["sdx_set"].add(sdx_id)
         if cl_entries:
             all_sets = [[int(v) for v in entry['sdx_set'].split(';')] for entry in cl_entries]
-            merged_entry["sdx_set"] = merged_entry["sdx_set"].union(all_sets)
+            merged_entry["sdx_set"] = merged_entry["sdx_set"].union(*all_sets)
 
         merged_entry["sdx_set"] = list(merged_entry["sdx_set"])
         merged_entry["sdx_set"].sort()

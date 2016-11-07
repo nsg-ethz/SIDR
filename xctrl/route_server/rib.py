@@ -3,7 +3,7 @@
 #  Muhammad Shahbaz (muhammad.shahbaz@gatech.edu)
 #  Rudiger Birkner (Networked Systems Group ETH Zurich)
 
-from rib_backend import LocalRIB
+from rib_backend import SQLRIB, LocalRIB
 
 LOG = False
 
@@ -13,7 +13,7 @@ class RIB(object):
         self.down = True
         self.config = config
         sdx_id = self.config.id
-        self.rib = LocalRIB(sdx_id, ["input", "local", "output"])
+        self.rib = SQLRIB(sdx_id, ["input", "local", "output"])
 
     def update(self, participant, route):
         origin = None
