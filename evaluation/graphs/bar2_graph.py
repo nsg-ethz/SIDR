@@ -24,16 +24,18 @@ bgp_efficiency = np.mean(np.array([bgp_safe[i]/total[i] for i in range(0, len(to
 no_prefixes_efficiency = np.mean(np.array([no_prefixes_safe[i]/total[i] for i in range(0, len(total))]))
 
 rects1 = plt.bar(index - distance - 0.5 * bar_width, bgp_efficiency*100.0, bar_width,
-                 color='#A60628', label='No')
+                 color='#A60628', label='No', hatch='//')
 
 rects2 = plt.bar(index - 0.5 * bar_width, no_prefixes_efficiency*100.0, bar_width,
-                 color='#A60628', label='No Prefixes')
+                 color='#A60628', label='No Prefixes', hatch='//')
 
 rects3 = plt.bar(index + distance - 0.5 * bar_width, sidr_efficiency*100.0, bar_width,
-                 color='#A60628', label='SIDR')
+                 color='#A60628', label='SIDR', hatch='//')
 
 rects4 = plt.bar(index + 2 * distance - 0.5 * bar_width, full_efficiency*100.0, bar_width,
-                 color='#A60628', label='Full')
+                 color='#A60628', label='Full', hatch='//')
+
+plt.yticks((0, 25, 50, 75, 100), ('0', '25', '50', '75', '100'))
 
 plt.xticks((index - distance, index, index + distance, index + 2*distance), ('\o', 'No Pfx', 'SIDR', 'Strawman'))
 
