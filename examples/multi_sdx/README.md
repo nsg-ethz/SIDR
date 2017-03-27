@@ -11,37 +11,37 @@ D prefers the paths from Z and C the ones from F. Both A and F try to install po
 ### Fabric Manager 
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/refmon/refmon.py --refmon-config ~/supercharged_sdx/examples/multi_sdx/global.cfg --refmon-instance 1 --ofp-tcp-listen-port 2001 --wsapi-port 2101
+$ ryu-manager ~/SIDR/refmon/refmon.py --refmon-config ~/SIDR/examples/multi_sdx/global.cfg --refmon-instance 1 --ofp-tcp-listen-port 2001 --wsapi-port 2101
 ```
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/refmon/refmon.py --refmon-config ~/supercharged_sdx/examples/multi_sdx/global.cfg --refmon-instance 2 --ofp-tcp-listen-port 2002 --wsapi-port 2102
+$ ryu-manager ~/SIDR/refmon/refmon.py --refmon-config ~/SIDR/examples/multi_sdx/global.cfg --refmon-instance 2 --ofp-tcp-listen-port 2002 --wsapi-port 2102
 ```
 
 ### Mininet
  
 ```bash
-$ sudo python ~/supercharged_sdx/examples/multi_sdx/mininet/topo.py
+$ sudo python ~/SIDR/examples/multi_sdx/mininet/topo.py
 ```
 
 ### SDX Controller
 
 ```bash
-$ sudo python ~/supercharged_sdx/xctrl/xctrl.py multi_sdx 1 -d
+$ sudo python ~/SIDR/xctrl/xctrl.py multi_sdx 1 -d
 ```
 
 ```bash
-$ sudo python ~/supercharged_sdx/xctrl/xctrl.py multi_sdx 2 -d
+$ sudo python ~/SIDR/xctrl/xctrl.py multi_sdx 2 -d
 ```
 
 ### ExaBGP
 
 ```bash
-$ exabgp ~/supercharged_sdx/examples/multi_sdx/sdx_1/bgp.conf --env ~/supercharged_sdx/examples/multi_sdx/sdx_1/exabgp.env
+$ exabgp ~/SIDR/examples/multi_sdx/sdx_1/bgp.conf --env ~/SIDR/examples/multi_sdx/sdx_1/exabgp.env
 ```
 
 ```bash
-$ exabgp ~/supercharged_sdx/examples/multi_sdx/sdx_2/bgp.conf --env ~/supercharged_sdx/examples/multi_sdx/sdx_2/exabgp.env
+$ exabgp ~/SIDR/examples/multi_sdx/sdx_2/bgp.conf --env ~/SIDR/examples/multi_sdx/sdx_2/exabgp.env
 ```
 
 ### Clean Up
@@ -49,8 +49,8 @@ $ exabgp ~/supercharged_sdx/examples/multi_sdx/sdx_2/bgp.conf --env ~/supercharg
 Be sure to remove the deflection table (CIB) and RIBs.
 
 ```bash
-$ rm ~/supercharged_sdx/xctrl/loop_detection/cibs/*
-$ rm ~/supercharged_sdx/xctrl/route_server/ribs/*
+$ rm ~/SIDR/xctrl/loop_detection/cibs/*
+$ rm ~/SIDR/xctrl/route_server/ribs/*
 ```
 
 ## Test the "multi_sdx" Example
@@ -72,13 +72,13 @@ _Participant F - outbound:_
 First, we try to install a policy at SDX1 to forward all HTTP-traffic (TCP port 80) from participant A to participant C.
 
 ```bash
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py multi_sdx 1
+$ python ~/SIDR/policy_submitter/policy_sender.py multi_sdx 1
 ```
 
 Second, we try to install a policy at SDX2 to forward all HTTP-traffic (TCP port 80) from participant F to participant D. These policies are conflicting and lead to a loop. SIDR should detect the conflict and block all affected prefixes from being affected by the second policy.
 
 ```bash
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py multi_sdx 2
+$ python ~/SIDR/policy_submitter/policy_sender.py multi_sdx 2
 ```
 
 #### 1  

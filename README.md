@@ -31,9 +31,7 @@ $ vagrant up
 
 * Clone the ```supercharged_sdx``` repository from Github into the VM:
 ```bash
-$ git clone https://github.com/sdn-ixp/supercharged_sdx.git
-$ chmod 755 ~/supercharged_sdx/xrs/client.py ~/supercharged_sdx/xrs/route_server.py ~/supercharged_sdx/examples/simple/mininet/sdx_mininext.py
-$ mkdir ~/supercharged_sdx/xrs/ribs
+$ git clone https://github.com/nsg-ethz/SIDR.git
 ```
 
 The provisioning scripts will install all the required software (and their dependencies) to run the SDX demo. Specifically it will install:
@@ -45,7 +43,7 @@ The provisioning scripts will install all the required software (and their depen
 
 #### Important
 
-* Make sure that the following two directories exist: xctrl/loop_detection/cibs and xctrl/route_server/ribs.
+* Make sure that the following two directories exist: ```/home/vagrant/SIDR/xctrl/loop_detection/cibs``` and ```/home/vagrant/SIDR/xctrl/route_server/ribs```.
 
 ## Examples
 

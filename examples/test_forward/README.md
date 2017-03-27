@@ -21,24 +21,24 @@ After 60 seconds the link between 200 and 500 fails and 200 switches to a direct
 
 ```bash
 $ cd 
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_forward 1 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_forward 2 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_forward 3 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_forward 4 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_forward 1 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_forward 2 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_forward 3 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_forward 4 -d -t
 ```
 
 ### Submit Policy Activation Requests
 
 ```bash
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_forward 1
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_forward 2
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_forward 3
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_forward 4
+$ python ~/SIDR/policy_submitter/policy_sender.py test_forward 1
+$ python ~/SIDR/policy_submitter/policy_sender.py test_forward 2
+$ python ~/SIDR/policy_submitter/policy_sender.py test_forward 3
+$ python ~/SIDR/policy_submitter/policy_sender.py test_forward 4
 ```
 
 ### Clean Up
 
 ```bash
-$ sudo rm ~/supercharged_sdx/xctrl/loop_detection/cibs/*
-$ sudo rm ~/supercharged_sdx/xctrl/route_server/ribs/*
+$ sudo rm ~/SIDR/xctrl/loop_detection/cibs/*
+$ sudo rm ~/SIDR/xctrl/route_server/ribs/*
 ```

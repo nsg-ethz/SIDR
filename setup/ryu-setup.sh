@@ -14,7 +14,7 @@ sudo pip install oslo.config==3.8.0
 #  Ryu install
 cd ~
 git clone -b $RYU_VERSION git://github.com/osrg/ryu.git
-sudo cp ~/supercharged_sdx/refmon/flags.py ~/ryu/ryu/flags.py
+sudo cp ~/SIDR/refmon/flags.py ~/ryu/ryu/flags.py
 cd ryu
 
 # Below should be temporary until ryu's pip-requires file is fixed

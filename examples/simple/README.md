@@ -3,25 +3,25 @@
 ### Fabric Manager 
 
 ```bash
-$ ryu-manager ~/supercharged_sdx/refmon/refmon.py --refmon-config ~/supercharged_sdx/examples/simple/global.cfg --refmon-instance 1 --ofp-tcp-listen-port 6633 --wsapi-port 2101
+$ ryu-manager ~/SIDR/refmon/refmon.py --refmon-config ~/SIDR/examples/simple/global.cfg --refmon-instance 1 --ofp-tcp-listen-port 6633 --wsapi-port 2101
 ```
 
 ### Mininet
  
 ```bash
-$ sudo python ~/supercharged_sdx/examples/simple/mininet/topo.py
+$ sudo python ~/SIDR/examples/simple/mininet/topo.py
 ```
 
 ### SDX Controller
 
 ```bash
-$ sudo python ~/supercharged_sdx/xctrl/xctrl.py simple 1 -d
+$ sudo python ~/SIDR/xctrl/xctrl.py simple 1 -d
 ```
 
 ### ExaBGP
 
 ```bash
-$ exabgp ~/supercharged_sdx/examples/simple/sdx_1/bgp.conf --env ~/supercharged_sdx/examples/simple/sdx_1/exabgp.env
+$ exabgp ~/SIDR/examples/simple/sdx_1/bgp.conf --env ~/SIDR/examples/simple/sdx_1/exabgp.env
 ```
 
 ### Clean Up
@@ -29,8 +29,8 @@ $ exabgp ~/supercharged_sdx/examples/simple/sdx_1/bgp.conf --env ~/supercharged_
 Be sure to remove the deflection table (CIB) and RIBs.
 
 ```bash
-$ rm ~/supercharged_sdx/xctrl/loop_detection/cibs/*
-$ rm ~/supercharged_sdx/xctrl/route_server/ribs/*
+$ rm ~/SIDR/xctrl/loop_detection/cibs/*
+$ rm ~/SIDR/xctrl/route_server/ribs/*
 ```
 
     
@@ -59,7 +59,7 @@ _Participant C - inbound:_
 Install the policies:
 
 ```bash
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py simple 1
+$ python ~/SIDR/policy_submitter/policy_sender.py simple 1
 ```
 	
 

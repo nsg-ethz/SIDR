@@ -23,26 +23,26 @@ We have four SDXes with three participants each and one with five participants. 
 
 ```bash
 $ cd 
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_loops2 1 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_loops2 2 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_loops2 3 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_loops2 12 -d -t
-$ python ~/supercharged_sdx/xctrl/xctrl.py test_loops2 13 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_loops2 1 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_loops2 2 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_loops2 3 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_loops2 12 -d -t
+$ python ~/SIDR/xctrl/xctrl.py test_loops2 13 -d -t
 ```
 
 ### Submit Policy Activation Requests
 
 ```bash
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_loops2 1
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_loops2 2
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_loops2 3
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_loops2 12
-$ python ~/supercharged_sdx/policy_submitter/policy_sender.py test_loops2 13
+$ python ~/SIDR/policy_submitter/policy_sender.py test_loops2 1
+$ python ~/SIDR/policy_submitter/policy_sender.py test_loops2 2
+$ python ~/SIDR/policy_submitter/policy_sender.py test_loops2 3
+$ python ~/SIDR/policy_submitter/policy_sender.py test_loops2 12
+$ python ~/SIDR/policy_submitter/policy_sender.py test_loops2 13
 ```
 
 ### Clean Up
 
 ```bash
-$ sudo rm ~/supercharged_sdx/xctrl/loop_detection/cibs/*
-$ sudo rm ~/supercharged_sdx/xctrl/route_server/ribs/*
+$ sudo rm ~/SIDR/xctrl/loop_detection/cibs/*
+$ sudo rm ~/SIDR/xctrl/route_server/ribs/*
 ```
