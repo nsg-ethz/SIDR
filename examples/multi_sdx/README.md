@@ -1,5 +1,11 @@
 # Multi-SDX Deployment
 
+## Setup
+![Loops1 Setup](setup.png)
+
+The example consists of 8 routers and two SDXes. A, B, C are peering at SDX1 and D, E, F at SDX2. X advertises a prefix to its neighbors B and E.
+D prefers the paths from Z and C the ones from F. Both A and F try to install policy which causes a forwarding loop.
+
 ## Usage
 
 ### Fabric Manager 

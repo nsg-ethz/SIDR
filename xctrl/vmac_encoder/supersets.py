@@ -199,7 +199,8 @@ class SuperSetEncoder(XCTRLModule):
             vmac_bitstring += set_bitstring
 
             # add identifier of best path
-            route = self.rib.get_routes('local', participant, prefix, None, False)
+            # rib_name, columns, participants, prefix, next_hop, all_entries
+            route = self.rib.get_routes('local', ['next_hop'], participant, prefix, None, False)
             if route:
                 best_participant = self.config.portip_2_participant[route['next_hop']]
 

@@ -19,3 +19,6 @@ sudo pip install requests
 
 # Install ExaBGP
 sudo pip install -U exabgp
+
+# Install PyMongo
+sudo pip install pymongo

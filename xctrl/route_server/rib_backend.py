@@ -9,6 +9,7 @@ from threading import RLock as lock
 from collections import defaultdict, namedtuple
 from pymongo import MongoClient
 
+
 class SQLRIB():
     def __init__(self, sdx_id, names):
         self.lock = lock()

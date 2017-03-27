@@ -143,9 +143,9 @@ class LoopDetector(XCTRLModule):
                 continue
 
             if not isinstance(messages, list):
-                msg = [messages]
+                messages = [messages]
             else:
-                msg = messages
+                messages = messages
 
             for msg in messages:
 
