@@ -1,4 +1,4 @@
-# Ryu based SDX Controller
+# SDX with SIDR
 
 ## Installation: Vagrant Setup
 
